@@ -18,25 +18,32 @@ is_there :: Char -> String -> Bool
 is_there a [] = False
 is_there a (x : xs) = (x == a) || (is_there a xs)
 
-take_except :: String -> String -> [String] -> [String]    
-take_except [] dont_take taken = reverse taken
-take_except (x : xs) dont_take [] = 
+-- separate_by from dont_take taken 
+-- Divides the string "from" using characters in "dont_take" and adds that to "taken"
+-- sample output
+--  separate_by  "abcd" "bc" ["kl","mn"] = ["mn","kla","d"]
+-- separate_by  "abcdefg" "bcf" [] = ["a","de","g"]
+
+
+separate_by :: String -> String -> [String] -> [String]    
+separate_by [] dont_take taken = reverse taken
+separate_by (x : xs) dont_take [] = 
     if (is_there x dont_take)
     then 
-        take_except xs dont_take []
+        separate_by xs dont_take []
     else
-        take_except xs dont_take [[x]]
-take_except (x : xs) dont_take ([] : ys) = 
+        separate_by xs dont_take [[x]]
+separate_by (x : xs) dont_take ([] : ys) = 
     if (is_there x dont_take) 
     then
-        take_except xs dont_take ([] :  ys)
+        separate_by xs dont_take ([] :  ys)
     else
-        take_except xs dont_take ([x] : ys)
-take_except (x : xs) dont_take ((y : ys) : yss) = 
+        separate_by xs dont_take ([x] : ys)
+separate_by (x : xs) dont_take ((y : ys) : yss) = 
     if (is_there x dont_take) 
     then
-        take_except xs dont_take ([] : ((y : ys) : yss))
+        separate_by xs dont_take ([] : ((y : ys) : yss))
     else
-        take_except xs dont_take ( ((y : ys) ++ [x]) : yss)
+        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)
         
                  
