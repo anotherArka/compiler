@@ -86,7 +86,7 @@ match_parenthesis (x : xs) pos [] =
     else match_parenthesis xs (pos + 1) []
 match_parenthesis (x : xs) pos (n : ns) = 
     if (x == '(') then match_parenthesis xs (pos + 1) (pos : (n : ns))
-    else if (x == ')') then ((n,pos) : (match_parenthesis xs (pos + 1) ns))
+    else if (x == ')') then ((match_parenthesis xs (pos + 1) ns) ++ [(n, pos)])
     else match_parenthesis xs (pos + 1) (n : ns)
  
     
