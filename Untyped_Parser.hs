@@ -49,16 +49,16 @@ separate_by (x : xs) dont_take ((y : ys) : yss) =
      
 ------------------------------------------------------------------------------------------------------------------   
         
---  take_except from dont_take taken
+--  take_except from dont_take
 -- filters the characters in "from" which are in "dont_take"       
-take_except :: String -> String -> String -> String
-take_except [] dont_take taken = taken
-take_except (x : xs) dont_take taken = 
+take_except :: String -> String -> String
+take_except [] dont_take = []
+take_except (x : xs) dont_take = 
     if (is_there x dont_take)
     then
-        take_except xs dont_take taken
+        take_except xs dont_take 
     else
-        take_except xs dont_take (taken ++ [x])          
+        x : (take_except xs dont_take)          
 
 -------------------------------------------------------------------------------------------------------------------
 
@@ -67,17 +67,39 @@ parse_lambda input = separate_by input "\\." []
 
 -------------------------------------------------------------------------------------------------------------------
 
-match_parenthesis :: String -> Int -> Int -> Int
-match_parenthesis [] pos height = 0
-match_parenthesis (x : xs) pos height = 
-    if (x == ')' && height == 0) then (pos + 1)
-    else if (x == ')' && height > 0) then match_parenthesis xs (pos + 1) (height - 1)
-    else if (x == '(') then match_parenthesis xs (pos + 1) (height + 1)
-    else match_parenthesis xs (pos + 1) height
+-- match_parenthesis :: String -> Int -> Int -> Int
+-- match_parenthesis [] pos height = 0
+-- match_parenthesis (x : xs) pos height = 
+   -- if (x == ')' && height == 0) then (pos + 1)
+   -- else if (x == ')' && height > 0) then match_parenthesis xs (pos + 1) (height - 1)
+   -- else if (x == '(') then match_parenthesis xs (pos + 1) (height + 1)
+   -- else match_parenthesis xs (pos + 1) height
+    
+------------------------------------------------------------------------------------------------------------------- 
+
+-- matches parenthesis until the string is finished or no of ')' is more than no of '('   
+match_parenthesis :: String -> Int -> [Int] -> [(Int, Int)]
+match_parenthesis [] pos not_matched = []
+match_parenthesis (x : xs) pos [] = 
+    if (x == '(') then match_parenthesis xs (pos + 1) [pos]
+    else if (x == ')') then []
+    else match_parenthesis xs (pos + 1) []
+match_parenthesis (x : xs) pos (n : ns) = 
+    if (x == '(') then match_parenthesis xs (pos + 1) (pos : (n : ns))
+    else if (x == ')') then ((n,pos) : (match_parenthesis xs (pos + 1) ns))
+    else match_parenthesis xs (pos + 1) (n : ns)
+ 
     
 -------------------------------------------------------------------------------------------------------------------
 
-             
+-- takes the string between index m and n. Notice that it starts counting from zero
+take_out_using_index :: String -> Int -> Int -> String
+take_out_using_index [] m n = []
+take_out_using_index (x : xs) m n = 
+    if (m == 0 && n == 0) then [x]
+    else if (m > 0 && n > 0) then take_out_using_index xs (m - 1) (n - 1)
+    else if (m == 0 && n > 0) then (x : (take_out_using_index xs 0 (n -1)))
+    else []                  
 
 -------------------------------------------------------------------------------------------------------------------
 
