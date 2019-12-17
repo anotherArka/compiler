@@ -2,6 +2,8 @@ module Untyped where
 
 data Nat = Zero | Succ Nat
 
+
+
 data Term = 
       Variable String
     | Lambda String Term
@@ -18,8 +20,8 @@ substitute v term (App func args) = App (substitute v term func) (substitute v t
 
 term_to_string :: Term -> String
 term_to_string (Variable v) = v
-term_to_string (Lambda v inside) = "(" ++ "\\" ++ v ++ "." ++ (term_to_string inside) ++ ")"
-term_to_string (App func args) = "(" ++ (term_to_string func) ++ " " ++ (term_to_string args) ++ ")"
+term_to_string (Lambda v inside) = "\\" ++ v ++ "." ++ (term_to_string inside)
+term_to_string (App func args) = "(" ++ (term_to_string func) ++ ") (" ++ (term_to_string args) ++ ")"
 
 instance Show Term where
     show term = term_to_string term

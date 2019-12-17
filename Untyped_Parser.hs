@@ -60,6 +60,30 @@ take_except (x : xs) dont_take taken =
     else
         take_except xs dont_take (taken ++ [x])          
 
+-------------------------------------------------------------------------------------------------------------------
+
+parse_lambda :: String -> [String]
+parse_lambda input = separate_by input "\\." []
+
+-------------------------------------------------------------------------------------------------------------------
+
+match_parenthesis :: String -> Int -> Int -> Int
+match_parenthesis [] pos height = 0
+match_parenthesis (x : xs) pos height = 
+    if (x == ')' && height == 0) then (pos + 1)
+    else if (x == ')' && height > 0) then match_parenthesis xs (pos + 1) (height - 1)
+    else if (x == '(') then match_parenthesis xs (pos + 1) (height + 1)
+    else match_parenthesis xs (pos + 1) height
+    
+-------------------------------------------------------------------------------------------------------------------
+
+             
+
+-------------------------------------------------------------------------------------------------------------------
+
+parse_application :: String -> [String]
+parse_application input = separate_by input "( )" [] -- this is wrong we have to match parenthesis
+
 
   
         
