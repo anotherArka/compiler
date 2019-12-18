@@ -62,6 +62,7 @@ take_except (x : xs) dont_take =
 
 -------------------------------------------------------------------------------------------------------------------
 
+-- parses a lambda expression given we know it is a valid one already
 parse_lambda :: String -> [String]
 parse_lambda input = separate_by input "\\." []
 
@@ -88,25 +89,53 @@ match_parenthesis (x : xs) pos (n : ns) =
     if (x == '(') then match_parenthesis xs (pos + 1) (pos : (n : ns))
     else if (x == ')') then ((match_parenthesis xs (pos + 1) ns) ++ [(n, pos)])
     else match_parenthesis xs (pos + 1) (n : ns)
- 
     
 -------------------------------------------------------------------------------------------------------------------
 
+get_value_from_key :: Int -> [(Int, ty)] -> ty
+get_value_from_key n ((m, a) : xs) = if (n == m) 
+    then a
+    else get_value_from_key n xs
+
+-------------------------------------------------------------------------------------------------------------------
+
 -- takes the string between index m and n. Notice that it starts counting from zero
-take_out_using_index :: String -> Int -> Int -> String
-take_out_using_index [] m n = []
-take_out_using_index (x : xs) m n = 
+take_out_using_index :: String -> (Int, Int) -> String
+take_out_using_index [] (m, n) = []
+take_out_using_index (x : xs) (m, n) = 
     if (m == 0 && n == 0) then [x]
-    else if (m > 0 && n > 0) then take_out_using_index xs (m - 1) (n - 1)
-    else if (m == 0 && n > 0) then (x : (take_out_using_index xs 0 (n -1)))
+    else if (m > 0 && n > 0) then take_out_using_index xs (m - 1, n - 1)
+    else if (m == 0 && n > 0) then (x : (take_out_using_index xs (0, n -1)))
     else []                  
 
 -------------------------------------------------------------------------------------------------------------------
 
-parse_application :: String -> [String]
-parse_application input = separate_by input "( )" [] -- this is wrong we have to match parenthesis
+-- parses the function and argument part of a term, given we know that it is an application
+parse_application :: String -> (String, String)
+parse_application input = let
+    func_index = (0, get_value_from_key 0 (match_parenthesis input 0 []))
+    func = take_out_using_index input func_index
+    args = take_out_using_index input ( (snd func_index) + 1, (length input) - 1)
+    func1 = omit_whitespaces func
+    args1 = omit_whitespaces args
+    in
+    (func1, args1)
+-------------------------------------------------------------------------------------------------------------------
 
+omit_whitespaces :: String -> String
+omit_whitespaces st = take_except st " "
 
-  
+-------------------------------------------------------------------------------------------------------------------  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
         
                  
