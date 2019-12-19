@@ -122,6 +122,7 @@ parse_application input = let
     (func1, args1)
 -------------------------------------------------------------------------------------------------------------------
 
+-- this function will be used to omit whitespaces, new lines etc
 omit_whitespaces :: String -> String
 omit_whitespaces st = take_except st "\n "
 
@@ -167,19 +168,47 @@ parse_expression expr_input = let
  
 --------------------------------------------------------------------------------------------------------------------
 
+-- lines are separated using ';'
 divide_into_lines :: String -> [String]
 divide_into_lines input = fmap omit_whitespaces (separate_by input ";" [])
 
 --------------------------------------------------------------------------------------------------------------------
 
-get_lhs_rhs :: String -> [String]
-get_lhs_rhs input = fmap omit_whitespaces (separate_by input "=" []) --- have to include errorenous returns using maybe
+-- gets lhs and rhs from a line
+get_lhs_rhs :: String -> (String, String)
+get_lhs_rhs input = let
+    parsed = separate_by input "=" []
+    lhs = head parsed
+    rhs = head (tail parsed)
+    in
+    fmap omit_whitespaces (lhs, rhs) --- have to include errorenous returns using maybe
  
 --------------------------------------------------------------------------------------------------------------------  
+
+-- parses the rhs
+parse_rhs :: (String, String) -> (String, Term)
+parse_rhs input = (fst input, parse_expression (snd input))
+
+--------------------------------------------------------------------------------------------------------------------
+
+-- parses rhs of multiple lines
+parse_rhs_multiple :: [(String, String)] -> [(String, Term)]
+parse_rhs_multiple  = fmap parse_rhs  
  
- 
- 
- 
- 
+-------------------------------------------------------------------------------------------------------------------- 
+
+parse_with_context :: [(String, Term)] -> (String, Term) -> Term 
+parse_with_context [] (lhs, rhs) = rhs
+parse_with_context (x : xs) (lhs, rhs) = let
+    var = fst x
+    val = snd x
+    in
+    App (Lambda var (parse_with_context xs (lhs, rhs))) val
+
+--------------------------------------------------------------------------------------------------------------------
+
+context1 = parse_rhs_multiple (fmap get_lhs_rhs (divide_into_lines "y = /x.(x)(x) ; z = (y)(y)"))
+parse1 = parse_with_context [head context1] (head (tail context1))     
+     
         
                  
