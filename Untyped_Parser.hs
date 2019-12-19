@@ -197,18 +197,35 @@ parse_rhs_multiple  = fmap parse_rhs
  
 -------------------------------------------------------------------------------------------------------------------- 
 
-parse_with_context :: [(String, Term)] -> (String, Term) -> Term 
-parse_with_context [] (lhs, rhs) = rhs
-parse_with_context (x : xs) (lhs, rhs) = let
+parse_with_context :: [(String, Term)] -> Term -> Term 
+parse_with_context [] term = term
+parse_with_context (x : xs) term = let
     var = fst x
     val = snd x
     in
-    App (Lambda var (parse_with_context xs (lhs, rhs))) val
+    App (Lambda var (parse_with_context xs term)) val
 
 --------------------------------------------------------------------------------------------------------------------
 
-context1 = parse_rhs_multiple (fmap get_lhs_rhs (divide_into_lines "y = /x.(x)(x) ; z = (y)(y)"))
-parse1 = parse_with_context [head context1] (head (tail context1))     
+-- parse_lines context remaining 
+-- context -> contains value of variables
+-- remaining -> lines which are yet to be parsed
+parse_lines :: [(String, Term)] -> [(String, String)] -> [(String, Term)]
+parse_lines context [] = context
+parse_lines context (x : xs) = let
+    var = fst x
+    value = parse_expression (snd x)
+    contexted_value = parse_with_context context value
+    in
+    parse_lines (context ++ [(var, contexted_value)]) xs
+
+--------------------------------------------------------------------------------------------------------------------
+
+all_together = "y = /x.(x)(x) ; z = (y)(y)"
+all_divided = divide_into_lines "y = /x.(x)(x) ; z = (y)(y)"
+all_lhs_rhs = fmap get_lhs_rhs all_divided
+all_parsed_step_1 = parse_rhs_multiple all_lhs_rhs
+all_parsed = parse_lines [] all_lhs_rhs  
      
         
                  
