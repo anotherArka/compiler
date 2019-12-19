@@ -64,7 +64,7 @@ take_except (x : xs) dont_take =
 
 -- parses a lambda expression given we know it is a valid one already
 parse_lambda :: String -> [String]
-parse_lambda input = separate_by input "\\." []
+parse_lambda input = fmap omit_whitespaces (separate_by input "/." [])
 
 -------------------------------------------------------------------------------------------------------------------
 
@@ -99,7 +99,7 @@ get_value_from_key n ((m, a) : xs) = if (n == m)
 
 -------------------------------------------------------------------------------------------------------------------
 
--- takes the string between index m and n. Notice that it starts counting from zero
+-- takes the string between index m and n excluding them. Notice that it starts counting from zero
 take_out_using_index :: String -> (Int, Int) -> String
 take_out_using_index [] (m, n) = []
 take_out_using_index (x : xs) (m, n) = 
@@ -114,8 +114,8 @@ take_out_using_index (x : xs) (m, n) =
 parse_application :: String -> (String, String)
 parse_application input = let
     func_index = (0, get_value_from_key 0 (match_parenthesis input 0 []))
-    func = take_out_using_index input func_index
-    args = take_out_using_index input ( (snd func_index) + 1, (length input) - 1)
+    func = take_out_using_index input ((fst func_index) + 1, (snd func_index) - 1)
+    args = take_out_using_index input ( (snd func_index) + 2, (length input) - 2)
     func1 = omit_whitespaces func
     args1 = omit_whitespaces args
     in
@@ -123,15 +123,59 @@ parse_application input = let
 -------------------------------------------------------------------------------------------------------------------
 
 omit_whitespaces :: String -> String
-omit_whitespaces st = take_except st " "
+omit_whitespaces st = take_except st "\n "
 
 -------------------------------------------------------------------------------------------------------------------  
  
+data Term_type = Variable_type | Lambda_type | App_type
+
+-------------------------------------------------------------------------------------------------------------------
+
+decide_term_type :: String -> Term_type
+decide_term_type input = let 
+    first_letter = head input
+    in
+    if (first_letter == '(') then App_type
+    else if (first_letter == '/') then Lambda_type
+    else Variable_type  
  
+-------------------------------------------------------------------------------------------------------------------
+
+parse_expression :: String -> Term
+parse_expression expr_input = let 
+    expr = omit_whitespaces expr_input
+    first_letter = head expr
+    in
+    if (first_letter == '(') then let
+        parsed_pair = parse_application expr
+        func_string = fst parsed_pair
+        args_string = snd parsed_pair
+        func = parse_expression func_string
+        args = parse_expression args_string -- use fmap here
+        in
+        App func args
+    
+    else if (first_letter == '/') then let
+        parsed = parse_lambda expr
+        var = head parsed
+        inside_string = parsed !! 1
+        inside = parse_expression inside_string
+        in 
+        Lambda var inside
+        
+    else Variable (omit_whitespaces expr)
  
+--------------------------------------------------------------------------------------------------------------------
+
+divide_into_lines :: String -> [String]
+divide_into_lines input = fmap omit_whitespaces (separate_by input ";" [])
+
+--------------------------------------------------------------------------------------------------------------------
+
+get_lhs_rhs :: String -> [String]
+get_lhs_rhs input = fmap omit_whitespaces (separate_by input "=" []) --- have to include errorenous returns using maybe
  
- 
- 
+--------------------------------------------------------------------------------------------------------------------  
  
  
  
