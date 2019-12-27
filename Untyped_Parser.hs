@@ -1,8 +1,11 @@
+module Untyped_Parser where
+
 import Data.Char
 --import Text.ParserCombinators.Parsec
 import Untyped
 import Data.List
 import Data.Bool
+import Data.Maybe
 
 --csvFile = endBy line eol
 --line = sepBy cell (char '=')
@@ -45,7 +48,7 @@ separate_by (x : xs) dont_take ((y : ys) : yss) =
     then
         separate_by xs dont_take ([] : ((y : ys) : yss))
     else
-        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)
+        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)     
      
 ------------------------------------------------------------------------------------------------------------------   
         
@@ -64,7 +67,14 @@ take_except (x : xs) dont_take =
 
 -- parses a lambda expression given we know it is a valid one already
 parse_lambda :: String -> [String]
-parse_lambda input = fmap omit_whitespaces (separate_by input "/." [])
+parse_lambda input = let
+    index_of_lambda = fromJust $ elemIndex '/' input
+    index_of_dot = fromJust $ elemIndex '.' input
+    var_name = take_out_using_index input (index_of_lambda + 1, index_of_dot - 1)
+    inside_lambda = take_out_using_index input (index_of_dot + 1, (length input) - 1)
+    in
+    [var_name, inside_lambda]
+    
 
 -------------------------------------------------------------------------------------------------------------------
 
@@ -227,5 +237,6 @@ all_lhs_rhs = fmap get_lhs_rhs all_divided
 all_parsed_step_1 = parse_rhs_multiple all_lhs_rhs
 all_parsed = parse_lines [] all_lhs_rhs  
      
+
         
                  

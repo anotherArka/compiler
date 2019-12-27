@@ -35,3 +35,14 @@ evaluate (Succ n) (App (Lambda v inside) term) = evaluate n (substitute v term (
 evaluate (Succ n) (App (App func left) right) = evaluate n (App (App (evaluate n func) (evaluate n left)) (evaluate n right))
 
 expr1 = Lambda "x" (App (Variable "x") (Variable "x"))
+
+one = Succ Zero
+two = Succ one
+three = Succ two
+four = Succ three
+five = Succ four
+six = Succ five
+seven = Succ six
+eight = Succ seven
+nine = Succ eight
+ten = Succ nine
