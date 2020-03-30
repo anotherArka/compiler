@@ -230,6 +230,30 @@ parse_lines context (x : xs) = let
     parse_lines (context ++ [(var, contexted_value)]) xs
 
 --------------------------------------------------------------------------------------------------------------------
+-- Finds the value for a varaible from the context
+find_value :: [(String, Term)] -> String -> (Maybe Term)
+find_value [] name = Nothing 
+find_value (x : xs) name = if ((fst x) == name) then (Just (snd x))
+  else (find_value xs name)
+  
+--------------------------------------------------------------------------------------------------------------------
+-- updates the value of a variable by evaluating it n times
+update :: [(String, Term)] -> String -> Nat -> [(String, Term)]
+update [] name n = []
+update (x : xs) name n = if ((fst x) == name) then let
+  new_term = evaluate n (snd x)
+  in (((fst x), new_term) : xs)
+  else
+  (x : (update xs name n))
+  
+---------------------------------------------------------------------------------------------------------------------
+final_parser :: String -> [(String, Term)]
+final_parser input = parse_lines [] (fmap get_lhs_rhs (divide_into_lines input)) 
+
+update_context :: [(String, Term)] -> String -> [(String, Term)]
+update_context context input = parse_lines context (fmap get_lhs_rhs (divide_into_lines input)) 
+  
+
 
 all_together = "y = /x.(x)(x) ; z = (y)(y)"
 all_divided = divide_into_lines "y = /x.(x)(x) ; z = (y)(y)"

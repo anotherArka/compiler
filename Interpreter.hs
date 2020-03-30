@@ -1,3 +1,10 @@
+module Interpreter where
+
+data Command_Type = 
+    Define String Term | 
+    Print_Term Term | 
+    Print_Var String | 
+    Evaluate Nat Term
 
 talk = do
     foo <- putStrLn "Hello, what's do you want me to do?"
