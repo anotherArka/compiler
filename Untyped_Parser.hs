@@ -7,15 +7,6 @@ import Data.List
 import Data.Bool
 import Data.Maybe
 
---csvFile = endBy line eol
---line = sepBy cell (char '=')
---cell = many (noneOf "=\n")
---eol = char '\n'
-
---parseCSV :: String -> Either ParseError [[String]]
---parseCSV input = parse csvFile "(unknown)" input
-
--- 
 --------------------------------------------------------------------------------------------------------------------------------
 -- is_there a xs = return true is a is inside xs, false otherwise
 is_there :: Char -> String -> Bool

@@ -2,8 +2,6 @@ module Untyped where
 
 data Nat = Zero | Succ Nat
 
-
-
 data Term = 
       Variable String
     | Lambda String Term
