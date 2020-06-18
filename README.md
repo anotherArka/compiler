@@ -9,5 +9,4 @@ consisting of substitution operation and evaluation.
 Contains a derivation of type Void in Haskell
 
 ### Next Goal
-To define the parser
-
+Write whatever small documentation is needed. And also an REPL.
