@@ -13,6 +13,11 @@ data Type =
   -- For eg List Nat can be defined as
   -- Inductive [("nil", (Singleton, Zero)),("append", (Nat, (Succ Zero)))]
 
+instance Eq Type where
+  Empty == Empty = True
+  Singleton == Singleton = True
+  (Sum a b) == (Sum c d) = (a == c) && (b == d)
+
 data Term = 
   Var String |
   Unit |
@@ -63,4 +68,12 @@ evaluate (App func args) = let
   if ((func == func_1) && (args == args_1)) then (App func args)
     else (evaluate (App func_1 args_1))
 
---type_check :: Term -> [(String, Type)] -> Type
+find_value :: String -> [(String, Type)] -> (Either String Type)
+find_value x [] = Left ("Not found variable" ++ x)
+find_value x (v : vs) =
+  if ((fst v) == x) then (Right (snd v)) else (find_value x vs)
+
+-- type_check :: Term -> Type -> [(String, Type)] -> Bool
+-- type_check (Var x) t vs =
+--   if ((find_value x vs) == (Right t)) then True else False
+   
