@@ -1,10 +1,10 @@
 module Typed_parser where
 
 import Typed_lambda
-import Untyped_Parser
+--import Untyped_Parser
 
 import Data.Char
---import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec
 import Data.List
 import Data.Bool
 import Data.Maybe
@@ -26,9 +26,26 @@ contains [] to_check = False
 contains (ch : chs) to_check =
   if (elem ch to_check) then True else (contains chs to_check)
 
--- counts number of occurences of an element in a list
-count :: Eq a => a -> [a] -> Int
-count x [] = 0
-count x (y : ys) = if (x == y) then (1 + (count x ys)) else (count x ys)
+-- -- counts number of occurences of an element in a list
+-- count :: Eq a => a -> [a] -> Int
+-- count x [] = 0
+-- count x (y : ys) = if (x == y) then (1 + (count x ys)) else (count x ys)
 
-     
+-- Continues to take a string until sees a character
+take_until :: Eq a => a -> [a] -> [a]
+take_until x [] = []
+take_until x (y : ys) =
+  if (x == y) then [] else (y : (take_until x ys))
+
+spaces :: Parser ()
+spaces = skipMany1 space
+
+colon :: Parser Char
+colon = oneOf ":"
+
+readExpr :: String -> String
+readExpr input = case parse colon "lisp" input of
+    Left err -> "No match: " ++ show err
+    Right val -> "Found value"
+
+ 
