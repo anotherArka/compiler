@@ -18,6 +18,13 @@ instance Eq TType where
   Singleton == Singleton = True
   (Sum a b) == (Sum c d) = (a == c) && (b == d)
 
+instance Show TType where
+  show Empty = "Empty"
+  show Singleton = "()"
+  show (Sum a b) = (show a) ++ " + " ++ (show b)
+  show (Product a b) = "(" ++ (show a) ++ "," ++ (show b) ++ ")"
+  show (Function a b) = "(" ++ (show a) ++ "->" ++ (show b) ++ ")" 
+
 data Term = 
   Var String |
   Unit |
@@ -28,6 +35,26 @@ data Term =
   App Term Term  
   -- have to add definition of inductive function and application of a function
   -- Ind String Term [Term]
+
+instance Eq Term where
+  (Var this) == (Var that) = this == that
+  Unit == Unit = True
+  (Inr this s) == (Inr that t) = (this == that) && (s == t)
+  (Inl this s) == (Inl that t) = (this == that) && (s == t)
+  (Pair a b) == (Pair c d) = (a == c) && (b == d)
+  (Lambda a u this) == (Lambda b v that) = (u == v) && (a == b) && (this == that)
+  (App f x) == (App g y) = (f == g) && (x == y)
+  -- (Ind c u s) == (Ind d v t) = (c == d) && (u == v) && (s == t)
+  _ == _ = False
+
+instance Show Term where
+  show (Var x) = x
+  show Unit = "()"
+  show (Inr x t) = "Inr(" ++ (show x) ++ ")"
+  show (Inl x t) = "Inl(" ++ (show x) ++ ")"
+  show (Pair x y) = "(" ++ (show x) ++ "," ++ (show y) ++ ")"
+  show (Lambda x t inside) = "\\" ++ x ++ " : " ++ (show t) ++ " . " ++ (show inside)
+  show (App x y) = "(" ++ (show x) ++ (show y) ++ ")"
 
 substitute :: String -> Term -> Term -> Term
 substitute v term (Var u) = term
@@ -41,17 +68,6 @@ substitute v term (Lambda u t inside) =
 substitute v term (App func args) = App (substitute v term func) (substitute v term args)  
 -- substitute v term (Ind cons values nodes) =
 --   Ind cons (substitute v term values) (fmap (substitute v term) nodes)
-
-instance Eq Term where
-  (Var this) == (Var that) = this == that
-  Unit == Unit = True
-  (Inr this s) == (Inr that t) = (this == that) && (s == t)
-  (Inl this s) == (Inl that t) = (this == that) && (s == t)
-  (Pair a b) == (Pair c d) = (a == c) && (b == d)
-  (Lambda a u this) == (Lambda b v that) = (u == v) && (a == b) && (this == that)
-  (App f x) == (App g y) = (f == g) && (x == y)
-  -- (Ind c u s) == (Ind d v t) = (c == d) && (u == v) && (s == t)
-  _ == _ = False
 
 -- We have to make sure that evaluation terminates  
 evaluate :: Term -> Term
@@ -84,3 +100,11 @@ type_check (Pair x y) vs =
   (\t -> ((type_check y vs) >>= 
   (\s -> Right (Product s t))))
 type_check (Lambda x t inside) vs = type_check inside ((x, t) : vs)  
+type_check (App x y) vs =
+  (type_check x vs) >>=
+  (\t -> case t of
+    (Function u v) -> ((type_check y vs) >>=
+      (\s -> if (u == s) then Right(v) else
+        Left("The function " ++ (show x) ++ " : " ++ (show (Function u v)) 
+        ++ " has argument " ++ (show y) ++ " : " ++ (show v))))
+    _ -> Left("Not a function : " ++ (show x)))  
