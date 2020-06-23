@@ -21,6 +21,7 @@ mutual
     Unit : TTerm -- element of the singleton type
     Myth : TType -> TTerm -- function from the empty type
     TPair : TTerm -> TTerm -> TTerm
+    App : TTerm -> TTerm -> TTerm
 
   data TType : Type where
     Singleton : TType
@@ -31,3 +32,10 @@ mutual
   data TTRel : TTerm -> TType -> Type where
     Unit_rule : TTRel Unit Singleton
     Void_rule : (ty : TType) -> (TTRel (Myth ty) (Function Empty ty))
+    Product_rule : (x : TTerm) -> (tx : TType) -> (TTRel x tx) ->
+                   (y : TTerm) -> (ty : TType) -> (TTRel y ty) ->
+                   (TTRel (TPair x y) (Product tx ty))
+    Function_rule : (dom : TType) -> (cod : TType) ->
+                    (f : TTerm) -> (x : TTerm) ->
+                    (TTRel f (Function dom cod)) -> (TTRel x dom) ->
+                    (TTRel (App f x) cod)
