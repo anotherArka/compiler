@@ -105,43 +105,49 @@ substitute_bound v term (Void t) = Void t
      
 
 -- We have to make sure that evaluation terminates  
--- evaluate :: Term -> Term
--- evaluate (Free u) = (Free u)
--- evaluate Unit = Unit
--- evaluate (Inr inside t) = Inr (evaluate inside) t
--- evaluate (Inl inside t) = Inl (evaluate inside) t
--- evaluate (Pair left right) = Pair (evaluate left) (evaluate right)
--- evaluate (Lambda a t inside) = Lambda a t (evaluate inside)
--- evaluate (App (Lambda a t inside) args) = evaluate (substitute a args inside)
--- evaluate (App func args) = let
---   func_1 = evaluate func_1
---   args_1 = evaluate args
---   in
---   if ((func == func_1) && (args == args_1)) then (App func args)
---     else (evaluate (App func_1 args_1))
--- evaluate (Void t) = Void t
+evaluate :: Term -> Term
+evaluate (Free u) = (Free u)
+evaluate (Bound n) = Bound n
+evaluate Unit = Unit
+evaluate (Inr inside t) = Inr (evaluate inside) t
+evaluate (Inl inside t) = Inl (evaluate inside) t
+evaluate (Pair left right) = Pair (evaluate left) (evaluate right)
+evaluate (Lambda t inside) = Lambda t (evaluate inside)
+evaluate (App (Lambda t inside) args) = evaluate (substitute_bound 0 args inside)
+evaluate (App func args) = let
+  func_1 = evaluate func
+  args_1 = evaluate args
+  in
+  if ((func == func_1) && (args == args_1)) then (App func args)
+    else (evaluate (App func_1 args_1))
+evaluate (Void t) = Void t
  
--- find_type_of_var :: String -> [(String, TType)] -> (Either String TType)
--- find_type_of_var x [] = Left ("Not found variable" ++ x)
--- find_type_of_var x (v : vs) =
---   if ((fst v) == x) then (Right (snd v)) else (find_type_of_var x vs)
+find_type_of_var :: String -> [(String, TType)] -> (Either String TType)
+find_type_of_var x [] = Left ("Not found variable" ++ x)
+find_type_of_var x (v : vs) =
+  if ((fst v) == x) then (Right (snd v)) else (find_type_of_var x vs)
 
--- type_check :: Term -> [(String, TType)] -> (Either String TType)
--- type_check (Var x) vs = find_type_of_var x vs
--- type_check Unit vs = Right Singleton
--- type_check (Inr x t) vs = (type_check x vs) >>= (\s -> Right (Sum t s))
--- type_check (Inl x t) vs = (type_check x vs) >>= (\s -> Right (Sum s t))
--- type_check (Pair x y) vs =
---   (type_check x vs) >>= 
---   (\t -> ((type_check y vs) >>= 
---   (\s -> Right (Product s t))))
--- type_check (Lambda x t inside) vs = type_check inside ((x, t) : vs)  
--- type_check (App x y) vs =
---   (type_check x vs) >>=
---   (\t -> case t of
---     (Function u v) -> ((type_check y vs) >>=
---       (\s -> if (u == s) then Right(v) else
---         Left("The function " ++ (show x) ++ " : " ++ (show (Function u v)) 
---         ++ " has argument " ++ (show y) ++ " : " ++ (show v))))
---     _ -> Left("Not a function : " ++ (show x)))
--- type_check (Void tt) vs = Right (Function Empty tt)     
+-- type_check term "type of free variables" "type of bound variables" 
+type_check :: Term -> [(String, TType)] -> [TType] -> (Either String TType)
+type_check (Free x) fs bs = find_type_of_var x fs
+type_check (Bound n) fs bs = 
+  if (n < 0) then Left("Index of bound variable can not be negative")
+  else if (n >= length(bs)) then Left("Index of bound variable more than number of lambda bindings")
+  else Right (bs !! n)
+type_check Unit fs bs = Right Singleton
+type_check (Inr x t) fs bs = (type_check x fs bs) >>= (\s -> Right (Sum t s))
+type_check (Inl x t) fs bs = (type_check x fs bs) >>= (\s -> Right (Sum s t))
+type_check (Pair x y) fs bs =
+  (type_check x fs bs) >>= 
+  (\t -> ((type_check y fs bs) >>= 
+  (\s -> Right (Product s t))))
+type_check (Lambda t inside) fs bs = type_check inside fs (t : bs) 
+type_check (App x y) fs bs =
+  (type_check x fs bs) >>=
+  (\t -> case t of
+    (Function u v) -> ((type_check y fs bs) >>=
+      (\s -> if (u == s) then Right(v) else
+        Left("The function " ++ (show x) ++ " : " ++ (show (Function u v)) 
+        ++ " has argument " ++ (show y) ++ " : " ++ (show v))))
+    _ -> Left("Not a function : " ++ (show x)))
+type_check (Void tt) fs bs = Right (Function Empty tt)     
