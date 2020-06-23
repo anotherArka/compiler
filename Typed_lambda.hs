@@ -22,9 +22,9 @@ instance Eq TType where
 
 instance Show TType where
   show Empty = "Empty"
-  show Singleton = "Unit"
-  show (Sum a b) = (show a) ++ " + " ++ (show b)
-  show (Product a b) = "(" ++ (show a) ++ "," ++ (show b) ++ ")"
+  show Singleton = "Singleton"
+  show (Sum a b) = "(" ++ (show a) ++ " + " ++ (show b) ++ ")"
+  show (Product a b) = "(" ++ (show a) ++ " * " ++ (show b) ++ ")"
   show (Function a b) = "(" ++ (show a) ++ " -> " ++ (show b) ++ ")" 
 
 data Term = 

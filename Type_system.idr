@@ -20,6 +20,8 @@ mutual
   data TTerm : Type where
     Unit : TTerm -- element of the singleton type
     Myth : TType -> TTerm -- function from the empty type
+    Bound : Nat -> TTerm -- bound variable
+    Free : String -> TTerm
     TPair : TTerm -> TTerm -> TTerm
     App : TTerm -> TTerm -> TTerm
 
