@@ -31,7 +31,7 @@ contains (ch : chs) to_check =
 -- count x [] = 0
 -- count x (y : ys) = if (x == y) then (1 + (count x ys)) else (count x ys)
 
--- Continues to take a string until sees a character
+-- Continues to take a string until sees a particular character
 take_until :: Eq a => a -> [a] -> [a]
 take_until x [] = []
 take_until x (y : ys) =
@@ -40,12 +40,7 @@ take_until x (y : ys) =
 spaces :: Parser ()
 spaces = skipMany1 space
 
-colon :: Parser Char
-colon = oneOf ":"
 
-readExpr :: String -> String
-readExpr input = case parse colon "lisp" input of
-    Left err -> "No match: " ++ show err
-    Right val -> "Found value"
+
 
  

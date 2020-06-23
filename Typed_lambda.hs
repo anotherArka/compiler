@@ -28,91 +28,120 @@ instance Show TType where
   show (Function a b) = "(" ++ (show a) ++ " -> " ++ (show b) ++ ")" 
 
 data Term = 
-  Var String |
+  Free String | -- free variables
+  Bound Int | -- bound variable using De-Bruijn Indexing
+              -- while parsing we have to make sure that 
+              -- Int is greater than equal to 0
   Unit |
   Inr Term TType | -- If x : T then (Inr x S) : Sum S T
   Inl Term TType | -- If x : T then (Inl x S) : Sum T S
   Pair Term Term |
-  Lambda String TType Term | 
+  Lambda TType Term | -- We will use De-Bruijn indexing 
   App Term Term |
   Void TType 
   -- have to add definition of inductive function and application of a function
   -- Ind String Term [Term]
 
 instance Eq Term where
-  (Var this) == (Var that) = this == that
+  (Free this) == (Free that) = this == that
+  (Bound this) == (Bound that) = this == that
   Unit == Unit = True
   (Inr this s) == (Inr that t) = (this == that) && (s == t)
   (Inl this s) == (Inl that t) = (this == that) && (s == t)
   (Pair a b) == (Pair c d) = (a == c) && (b == d)
-  (Lambda a u this) == (Lambda b v that) = (u == v) && (a == b) && (this == that)
+  (Lambda u this) == (Lambda v that) = (u == v) && (this == that)
   (App f x) == (App g y) = (f == g) && (x == y)
   (Void s) == (Void t) = (s == t)
   -- (Ind c u s) == (Ind d v t) = (c == d) && (u == v) && (s == t)
   _ == _ = False
 
 instance Show Term where
-  show (Var x) = x
+  show (Free x) = x
+  show (Bound n) = "#x" ++ (show n) ++ "" -- only bound variables will be shown using '#'
   show Unit = "unit"
   show (Inr x t) = "Inr(" ++ (show x) ++ ")"
   show (Inl x t) = "Inl(" ++ (show x) ++ ")"
   show (Pair x y) = "(" ++ (show x) ++ "," ++ (show y) ++ ")"
-  show (Lambda x t inside) = "/" ++ x ++ " : " ++ (show t) ++ " . " ++ (show inside)
+  show (Lambda t inside) = "/" ++ (show t) ++ " . " ++ (show inside)
   show (App x y) = "(" ++ (show x) ++ (show y) ++ ")"
   show (Void t) = "void"
 
-substitute :: String -> Term -> Term -> Term
-substitute v term (Var u) = term
-substitute v term Unit = Unit
-substitute v term (Inr inside t) = Inr (substitute v term inside) t
-substitute v term (Inl inside t) = Inl (substitute v term inside) t
-substitute v term (Pair left right) =
-  Pair (substitute v term left) (substitute v term right)
-substitute v term (Lambda u t inside) =
-  if (v == u) then (Lambda u t inside) else (Lambda u t (substitute v term inside))
-substitute v term (App func args) = App (substitute v term func) (substitute v term args)
-substitute v term (Void t) = Void t  
+-- substitution method for free variables
+-- substitute_free "variable to be replaces" "term to be replaced with"
+--                 "term to replace in"
+substitute_free :: String -> Term -> Term -> Term
+substitute_free v term (Free s) = if (v == s) then term else (Free s)
+substitute_free v term (Bound n) = Bound n
+substitute_free v term Unit = Unit
+substitute_free v term (Inr inside t) = Inr (substitute_free v term inside) t
+substitute_free v term (Inl inside t) = Inl (substitute_free v term inside) t
+substitute_free v term (Pair left right) =
+  Pair (substitute_free v term left) (substitute_free v term right)
+substitute_free v term (Lambda t inside) = Lambda t (substitute_free v term inside)
+substitute_free v term (App func args) =
+  App (substitute_free v term func) (substitute_free v term args)
+substitute_free v term (Void t) = Void t  
 -- substitute v term (Ind cons values nodes) =
 --   Ind cons (substitute v term values) (fmap (substitute v term) nodes)
 
--- We have to make sure that evaluation terminates  
-evaluate :: Term -> Term
-evaluate (Var u) = (Var u)
-evaluate Unit = Unit
-evaluate (Inr inside t) = Inr (evaluate inside) t
-evaluate (Inl inside t) = Inl (evaluate inside) t
-evaluate (Pair left right) = Pair (evaluate left) (evaluate right)
-evaluate (Lambda a t inside) = Lambda a t (evaluate inside)
-evaluate (App (Lambda a t inside) args) = evaluate (substitute a args inside)
-evaluate (App func args) = let
-  func_1 = evaluate func_1
-  args_1 = evaluate args
-  in
-  if ((func == func_1) && (args == args_1)) then (App func args)
-    else (evaluate (App func_1 args_1))
-evaluate (Void t) = Void t
- 
-find_type_of_var :: String -> [(String, TType)] -> (Either String TType)
-find_type_of_var x [] = Left ("Not found variable" ++ x)
-find_type_of_var x (v : vs) =
-  if ((fst v) == x) then (Right (snd v)) else (find_type_of_var x vs)
+-- substitution method for bound variables
+-- substitution depth "term to replace with" "term to replace in"
+substitute_bound :: Int -> Term -> Term -> Term
+substitute_bound depth term (Free v) = Free v
+substitute_bound depth term (Bound n) =
+  if (n == depth) then term
+  else if (n > depth) then (Bound (n -1))
+  else (Bound n)
+substitute_bound depth term Unit = Unit
+substitute_bound depth term (Inr inside t) = Inr (substitute_bound depth term inside) t
+substitute_bound depth term (Inl inside t) = Inl (substitute_bound depth term inside) t
+substitute_bound depth term (Pair left right) = 
+  Pair (substitute_bound depth term left) (substitute_bound depth term right)
+substitute_bound depth term (Lambda t inside) =
+  Lambda t (substitute_bound (depth + 1) term inside)      
+substitute_bound depth term (App x y) =
+  App (substitute_bound depth term x) (substitute_bound depth term y)
+substitute_bound v term (Void t) = Void t
+     
 
-type_check :: Term -> [(String, TType)] -> (Either String TType)
-type_check (Var x) vs = find_type_of_var x vs
-type_check Unit vs = Right Singleton
-type_check (Inr x t) vs = (type_check x vs) >>= (\s -> Right (Sum t s))
-type_check (Inl x t) vs = (type_check x vs) >>= (\s -> Right (Sum s t))
-type_check (Pair x y) vs =
-  (type_check x vs) >>= 
-  (\t -> ((type_check y vs) >>= 
-  (\s -> Right (Product s t))))
-type_check (Lambda x t inside) vs = type_check inside ((x, t) : vs)  
-type_check (App x y) vs =
-  (type_check x vs) >>=
-  (\t -> case t of
-    (Function u v) -> ((type_check y vs) >>=
-      (\s -> if (u == s) then Right(v) else
-        Left("The function " ++ (show x) ++ " : " ++ (show (Function u v)) 
-        ++ " has argument " ++ (show y) ++ " : " ++ (show v))))
-    _ -> Left("Not a function : " ++ (show x)))
-type_check (Void tt) vs = Right (Function Empty tt)     
+-- We have to make sure that evaluation terminates  
+-- evaluate :: Term -> Term
+-- evaluate (Free u) = (Free u)
+-- evaluate Unit = Unit
+-- evaluate (Inr inside t) = Inr (evaluate inside) t
+-- evaluate (Inl inside t) = Inl (evaluate inside) t
+-- evaluate (Pair left right) = Pair (evaluate left) (evaluate right)
+-- evaluate (Lambda a t inside) = Lambda a t (evaluate inside)
+-- evaluate (App (Lambda a t inside) args) = evaluate (substitute a args inside)
+-- evaluate (App func args) = let
+--   func_1 = evaluate func_1
+--   args_1 = evaluate args
+--   in
+--   if ((func == func_1) && (args == args_1)) then (App func args)
+--     else (evaluate (App func_1 args_1))
+-- evaluate (Void t) = Void t
+ 
+-- find_type_of_var :: String -> [(String, TType)] -> (Either String TType)
+-- find_type_of_var x [] = Left ("Not found variable" ++ x)
+-- find_type_of_var x (v : vs) =
+--   if ((fst v) == x) then (Right (snd v)) else (find_type_of_var x vs)
+
+-- type_check :: Term -> [(String, TType)] -> (Either String TType)
+-- type_check (Var x) vs = find_type_of_var x vs
+-- type_check Unit vs = Right Singleton
+-- type_check (Inr x t) vs = (type_check x vs) >>= (\s -> Right (Sum t s))
+-- type_check (Inl x t) vs = (type_check x vs) >>= (\s -> Right (Sum s t))
+-- type_check (Pair x y) vs =
+--   (type_check x vs) >>= 
+--   (\t -> ((type_check y vs) >>= 
+--   (\s -> Right (Product s t))))
+-- type_check (Lambda x t inside) vs = type_check inside ((x, t) : vs)  
+-- type_check (App x y) vs =
+--   (type_check x vs) >>=
+--   (\t -> case t of
+--     (Function u v) -> ((type_check y vs) >>=
+--       (\s -> if (u == s) then Right(v) else
+--         Left("The function " ++ (show x) ++ " : " ++ (show (Function u v)) 
+--         ++ " has argument " ++ (show y) ++ " : " ++ (show v))))
+--     _ -> Left("Not a function : " ++ (show x)))
+-- type_check (Void tt) vs = Right (Function Empty tt)     
