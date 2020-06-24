@@ -21,6 +21,17 @@ data Context_Entry = Entry {
 invalid :: [Char]
 invalid = "!" 
 
+enclosed_in :: Char -> Char -> Parser a -> Parser a
+enclosed_in a b p = do
+  skipMany space
+  char a
+  skipMany space
+  x <- p
+  skipMany space
+  char b
+  skipMany space
+  return x
+
 -- contains list to_check checks if there is a character in to_check
 -- which is also in list 
 contains :: String -> String -> Bool
@@ -54,8 +65,8 @@ parse_type :: [(String, TType)] -> (Parser TType)
 parse_type context = do
   skipMany space 
   x <- (try (parse_constant context) 
-        <|> try (parse_identifier context)
-        <|> try (parse_function context))
+    <|> try (parse_identifier context)
+    <|> try (parse_function context))
   skipMany space
   return x
 
@@ -92,16 +103,22 @@ parse_function context = do
 
 ---------- parsing of terms ------------------------------------------------------
 
--- parse_term parses a term based on a context and a type
--- The first on contains type names.
--- The second one contains terms along with types
+-- parse_term parses a term based on a two contexts and a type
+-- The first one contains terms along with types
+--  The second one contains types of bouns variables
 -- The type denotes the type of the variable
-parse_term :: [(String, (TType, Term))] -> TType -> Parser Term 
-parse_term context term_type =
-  parse_constant_term context term_type 
+parse_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term 
+parse_term context bound_context term_type = do
+  skipMany space
+  x <- (try (parse_constant_term context bound_context term_type) 
+    <|> try (parse_pair_term     context bound_context term_type)
+    -- <|> try (parse_lambda_term   context bound_context term_type)
+    <|> try (enclosed_in '(' ')' (parse_term context bound_context term_type)))
+  skipMany space  
+  return x 
 
-parse_constant_term :: [(String, (TType, Term))] -> TType -> Parser Term
-parse_constant_term context term_type = do
+parse_constant_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
+parse_constant_term context bound_context term_type = do
   x <- many1 letter
   y <- many (letter <|> digit) 
   case (x ++ y) of
@@ -114,4 +131,43 @@ parse_constant_term context term_type = do
         then (return (snd (snd found)))
         else fail ("Expected type : " ++ (show term_type) ++
           "\n Found type : " ++ (show (fst (snd found))))                                                 
-      Nothing -> fail ("Not found definition of " ++ (x ++ y))  
+      Nothing -> fail ("Not found definition of " ++ (x ++ y))
+
+parse_pair_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
+parse_pair_term context bound_context term_type = case term_type of
+  (Product s t) -> do
+    char '('
+    x <- parse_term context bound_context s
+    char ','
+    y <- parse_term context bound_context t
+    char ')'
+    return (Pair x y)
+  _ -> fail ((show term_type) ++ " is not a product type")
+
+parse_sum_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
+parse_sum_term context bound_context term_type = case term_type of
+  (Sum s t) -> do
+    x <- many letter
+    case x of
+      "inr" -> do
+        y <- enclosed_in '(' ')' (parse_term context bound_context t)
+        return (Inr y s)
+      "inl" -> do
+        y <- enclosed_in '(' ')' (parse_term context bound_context s)
+        return (Inl y t)
+  _ -> fail ((show term_type) ++ " is not a sum type")
+
+----------- 
+
+----------- needs to be done carefully --------------------------------------
+
+-- parse_lambda_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
+-- parse_lambda_term context bound_context term_type = case term_type of
+--   (Function s t) -> do
+--     char '\\'
+--     y <- parse_term context (s : bound_context) t
+--     return (Lambda s y)
+
+-- parse_app_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
+-- parse_sum_term context bound_context term_type = do
+

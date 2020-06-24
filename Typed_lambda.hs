@@ -63,7 +63,7 @@ instance Show Term where
   show (Inl x t) = "Inl(" ++ (show x) ++ ")"
   show (Pair x y) = "(" ++ (show x) ++ "," ++ (show y) ++ ")"
   show (Lambda t inside) = "/" ++ (show t) ++ " . " ++ (show inside)
-  show (App x y) = "(" ++ (show x) ++ (show y) ++ ")"
+  show (App x y) = (show x) ++ "(" ++ (show y) ++ ")"
   show (Void t) = "void"
 
 -- substitution method for free variables
