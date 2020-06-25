@@ -103,70 +103,69 @@ parse_function context = do
 
 ---------- parsing of terms ------------------------------------------------------
 
--- parse_term parses a term based on a contexts 
-parse_term :: [(String, Term)] -> Parser Term 
-parse_term context = do
+-- parse_term parses a term based on a context and a list of
+-- name for bound variables 
+parse_term :: [(String, Term)] -> [String] -> Parser Term 
+parse_term context bound_name = do
   -- skipMany space
-  x <- (try (parse_constant_term context) 
-    <|> try (parse_app_term context)
-    <|> try (parse_sum_term context)
-    <|> try (parse_pair_term context))
+  x <- (try (parse_constant_term context bound_name) 
+    <|> try (parse_app_term context bound_name)
+    <|> try (parse_sum_term context bound_name)
+    <|> try (parse_pair_term context bound_name))
     -- <|> try (parse_lambda_term   context bound_context term_type)
     -- <|> try (enclosed_in '(' ')' (parse_term context)))
   -- skipMany space  
   return x 
 
-parse_constant_term :: [(String, Term)] -> Parser Term
-parse_constant_term context = do
+parse_constant_term :: [(String, Term)] -> [String] -> Parser Term
+parse_constant_term context bound_name = do
   x <- many1 letter
   y <- many (letter <|> digit) 
   case (x ++ y) of
     "unit" -> return Unit
-    "void" -> return Void
-      -- case term_type of
-      -- (Function Empty t) -> return (Void t)
-      -- _ -> fail ("Unexpected type " ++ (show term_type) ++ " of void")
+    "void" -> return Void     
     _ -> case (find (\el -> ((fst el) == (x ++ y))) context) of
-      (Just found) -> return (snd found)
-        -- if ((fst (snd found)) == term_type)
-        -- then (return (snd (snd found)))
-        -- else fail ("Expected type : " ++ (show term_type) ++
-        --   "\n Found type : " ++ (show (fst (snd found))))                                                 
-      Nothing -> fail ("Not found definition of " ++ (x ++ y))
+      (Just found_def) -> case (elemIndex (x ++ y) bound_name) of
+        (Just bound_index) -> fail ("Repeated use of name " ++ (x ++ y))
+        Nothing -> return (snd found_def)                                
+      Nothing -> case (elemIndex (x ++ y) bound_name) of
+        (Just bound_index) -> return (Bound bound_index)
+        Nothing -> fail ("Not found definition of " ++ (x ++ y))
 
-parse_pair_term :: [(String, Term)] -> Parser Term
-parse_pair_term context = do
+parse_pair_term :: [(String, Term)] -> [String] -> Parser Term
+parse_pair_term context bound_name = do
     char '('
-    x <- parse_term context
+    x <- parse_term context bound_name
     char ','
-    y <- parse_term context
+    y <- parse_term context bound_name
     char ')'
     return (Pair x y)
 
-parse_sum_term :: [(String, Term)] -> Parser Term
-parse_sum_term context = do
+parse_sum_term :: [(String, Term)] -> [String] -> Parser Term
+parse_sum_term context bound_name = do
     x <- many letter
     case x of
       "inr" -> do
-        y <- enclosed_in '(' ')' (parse_term context)
+        y <- enclosed_in '(' ')' (parse_term context bound_name)
         return (Inr y)
       "inl" -> do
-        y <- enclosed_in '(' ')' (parse_term context)
+        y <- enclosed_in '(' ')' (parse_term context bound_name)
         return (Inl y)
       _ -> fail ("Unrecongnised constructor " ++ x) 
 
--- parse_lambda_term :: [(String, (TType, Term))] -> [TType] -> TType -> Parser Term
--- parse_lambda_term context bound_context term_type = case term_type of
---   (Function s t) -> do
---     char '\\'
---     y <- parse_term context (s : bound_context) t
---     return (Lambda s y)
+parse_lambda_term :: [(String, Term)] -> [String] -> Parser Term
+parse_lambda_term context bound_name = do
+  char '\\'
+  var_name <- many (letter <|> digit)
+  char '.'
+  inside <- parse_term context (var_name : bound_name)
+  return (Lambda inside)
 
-parse_app_term :: [(String, Term)] -> Parser Term
-parse_app_term context = do
+parse_app_term :: [(String, Term)] -> [String] -> Parser Term
+parse_app_term context bound_name = do
   char '('
-  x <- (parse_term context)
+  x <- (parse_term context bound_name)
   skipMany1 space
-  y <- (parse_term context)
+  y <- (parse_term context bound_name)
   char ')'
   return (App x y)
