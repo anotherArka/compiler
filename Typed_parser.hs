@@ -23,13 +23,13 @@ invalid = "!#" -- # is reserved for bound variables
 
 enclosed_in :: Char -> Char -> Parser a -> Parser a
 enclosed_in a b p = do
-  skipMany space
+  -- skipMany space
   char a
-  skipMany space
+  -- skipMany space
   x <- p
-  skipMany space
+  -- skipMany space
   char b
-  skipMany space
+  -- skipMany space
   return x
 
 -- contains list to_check checks if there is a character in to_check
@@ -63,11 +63,11 @@ with_skip p = do
 -- the parse_type function gives a parser of the type based on the context
 parse_type :: [(String, TType)] -> (Parser TType)
 parse_type context = do
-  skipMany space 
+  -- skipMany space 
   x <- (try (parse_constant context) 
     <|> try (parse_identifier context)
     <|> try (parse_function context))
-  skipMany space
+  -- skipMany space
   return x
 
 parse_constant :: [(String, TType)] -> (Parser TType)
@@ -106,14 +106,14 @@ parse_function context = do
 -- parse_term parses a term based on a contexts 
 parse_term :: [(String, Term)] -> Parser Term 
 parse_term context = do
-  skipMany space
+  -- skipMany space
   x <- (try (parse_constant_term context) 
     <|> try (parse_app_term context)
     <|> try (parse_sum_term context)
     <|> try (parse_pair_term context))
     -- <|> try (parse_lambda_term   context bound_context term_type)
     -- <|> try (enclosed_in '(' ')' (parse_term context)))
-  skipMany space  
+  -- skipMany space  
   return x 
 
 parse_constant_term :: [(String, Term)] -> Parser Term
@@ -166,7 +166,7 @@ parse_app_term :: [(String, Term)] -> Parser Term
 parse_app_term context = do
   char '('
   x <- (parse_term context)
-  char '.'
+  skipMany1 space
   y <- (parse_term context)
   char ')'
   return (App x y)
