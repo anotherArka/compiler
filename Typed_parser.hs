@@ -148,7 +148,6 @@ parse_term context bound_name = do
     <|> try (parse_sum_term context bound_name)
     <|> try (parse_pair_term context bound_name)
     <|> try (parse_lambda_term context bound_name)
-    -- <|> try (enclosed_in '(' ')' (parse_term context)))
     -- <?> "Parse error")
     )
   -- skipMany space 
@@ -169,9 +168,13 @@ parse_constant_term context bound_name = do
 parse_pair_term :: [(String, Term)] -> [String] -> Parser Term
 parse_pair_term context bound_name = do
   char '('
+  skipMany space
   x <- parse_term context bound_name
+  skipMany space
   char ','
+  skipMany space
   y <- parse_term context bound_name
+  skipMany space
   char ')'
   return (Pair x y)
 
@@ -182,13 +185,13 @@ parse_sum_term context bound_name = do
     skipMany1 space
     case x of
       "inr" -> do
-        -- char '('
         y <- parse_term context bound_name
+        skipMany space
         char ')'
         return (Inr y)
       "inl" -> do
-        -- char '('
         y <- parse_term context bound_name
+        skipMany space
         char ')'
         return (Inl y)
       _ -> unexpected ("constructor " ++ x)
@@ -198,7 +201,9 @@ parse_lambda_term context bound_name = do
   char '/'
   x <- many1 letter
   y <- many (letter <|> digit <|> allowed)
+  skipMany space
   char '.'
+  skipMany space
   inside <- parse_term context ((x ++ y) : bound_name)
   case (find (== (x ++ y)) (((fmap fst) context) ++ bound_name)) of
     (Just found) -> fail ("repeated use of name " ++ (x ++ y))
@@ -207,9 +212,11 @@ parse_lambda_term context bound_name = do
 parse_app_term :: [(String, Term)] -> [String] -> Parser Term
 parse_app_term context bound_name = do
   char '('
+  skipMany space
   x <- parse_term context bound_name
   skipMany1 space
   y <- parse_term context bound_name
+  skipMany space
   char ')'
   return (App x y)
 
