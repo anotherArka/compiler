@@ -65,15 +65,18 @@ instance Eq Term where
   _ == _ = False
 
 instance Show Term where
-  show (Free x) = x
-  show (Bound n) = "#x" ++ (show n) ++ "" -- only bound variables will be shown using '#'
-  show Unit = "unit"
-  show (Inr x) = "Inr(" ++ (show x) ++ ")"
-  show (Inl x) = "Inl(" ++ (show x) ++ ")"
-  show (Pair x y) = "(" ++ (show x) ++ "," ++ (show y) ++ ")"
-  show (Lambda inside) = "/" ++ " .(" ++ (show inside) ++ ")"
-  show (App x y) = (show x) ++ "(" ++ (show y) ++ ")"
-  show (Void) = "void"
+  show x = show_helper 0 x
+
+show_helper :: Int -> Term -> String
+show_helper level (Free x) = x
+show_helper level (Bound n) = "#x" ++ (show (level - n - 1)) 
+show_helper level Unit = "unit"
+show_helper level (Inr x) = "(Inr" ++ (show_helper level x) ++ ")"
+show_helper level (Inl x) = "(Inl" ++ (show_helper level x) ++ ")"
+show_helper level (Pair x y) = "(" ++ (show_helper level x) ++ "," ++ (show_helper level y) ++ ")"
+show_helper level (Lambda inside) = "/" ++ "#x" ++ (show level) ++ "." ++ (show_helper (level + 1) inside)
+show_helper level (App x y) = "(" ++ (show_helper level x) ++ " " ++ (show_helper level y) ++ ")"
+show_helper level Void = "void"
 
 -- substitution method for free variables
 -- substitute_free "variable to be replaces" "term to be replaced with"
