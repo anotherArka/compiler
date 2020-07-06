@@ -28,3 +28,25 @@ parse_node = do
   y <- parse_tree
   char ')'
   return (Node x y)
+
+data Exp = Atom String | Op String Exp
+
+instance Show Exp where
+  show (Atom x) = x
+  show (Op f x) = f ++ "(" ++ (show x) ++ ")"
+
+parse_exp :: Parser Exp
+parse_exp = (try parse_op) <|> parse_atom
+
+parse_atom :: Parser Exp
+parse_atom = do
+  x <- many1 letter
+  return (Atom x)
+
+parse_op :: Parser Exp
+parse_op = do
+  x <- many1 letter
+  char '(' 
+  y <- parse_exp
+  char ')'
+  return (Op x y)

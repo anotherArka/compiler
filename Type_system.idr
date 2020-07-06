@@ -19,25 +19,51 @@ module Type_system
 mutual
   data TTerm : Type where
     Unit : TTerm -- element of the singleton type
-    Myth : TType -> TTerm -- function from the empty type
+    Myth : TTerm -> TTerm -- function from the empty type
     Bound : Nat -> TTerm -- bound variable
     Free : String -> TTerm
-    TPair : TTerm -> TTerm -> TTerm
+    TPair : TTerm -> TTerm -> TTerm -- is this with the rule in TTRel enough for a dependent pair?
     App : TTerm -> TTerm -> TTerm
+    Lambda : TTerm -> TTerm -- by lambda we just bind the variable "Bound 0"
 
-  data TType : Type where
-    Singleton : TType
-    Empty : TType
-    Function : TType -> TType -> TType
-    Product : TType -> TType -> TType
-
-  data TTRel : TTerm -> TType -> Type where
+  --data TType : Type where
+    Universe : Nat -> TTerm
+    Singleton : TTerm
+    Empty : TTerm
+    Function : TTerm -> TTerm -> TTerm
+    Product : TTerm -> TTerm -> TTerm
+    Inductive : TTerm -> Nat -> TTerm -> TTerm
+    Cons : TTerm -> TTerm  
+      
+  -- For example in the type Fin : Nat -> Type, Nat is a parameter
+  -- In the declaration data Tree : (ty : Type) -> Type where
+  --                                 leaf : ty -> Type  
+  --                                 node : (Tree ty) -> (Tree ty) -> (Tree ty)
+  -- ty is an argument. Because we are using De-Bruijn index it is enough to
+  -- specify the number of arguments.
+  
+  data TTRel : TTerm -> TTerm -> Type where
     Unit_rule : TTRel Unit Singleton
-    Void_rule : (ty : TType) -> (TTRel (Myth ty) (Function Empty ty))
-    Product_rule : (x : TTerm) -> (tx : TType) -> (TTRel x tx) ->
-                   (y : TTerm) -> (ty : TType) -> (TTRel y ty) ->
+    Void_rule : (ty : TTerm) -> (TTRel (Myth ty) (Function Empty ty))
+    Product_rule : (x : TTerm) -> (tx : TTerm) -> (TTRel x tx) ->
+                   (y : TTerm) -> (ty : TTerm) -> (TTRel y ty) ->
                    (TTRel (TPair x y) (Product tx ty))
-    Function_rule : (dom : TType) -> (cod : TType) ->
+    Function_rule : (dom : TTerm) -> (cod : TTerm) ->
                     (f : TTerm) -> (x : TTerm) ->
                     (TTRel f (Function dom cod)) -> (TTRel x dom) ->
                     (TTRel (App f x) cod)
+    Lambda_rule : (dom : TTerm) -> (cod : TTerm) ->
+                  (inside : TTerm) -> (TTRel (Bound Z) dom) -> (TTRel inside cod) ->
+                  (TTRel (Lambda inside) (Function dom cod))
+    --------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------- IMPORTANT NOTE ---------------------------------------
+    ------------------------------------------------------- IMPORTANT NOTE ---------------------------------------
+    --------------------------------------------------------------------------------------------------------------              
+    -- Possibly we need more rules to check validity of this inductive type
+    -- I don't think that it reflects dependency on the arguments
+    -- maybe we need to insert context explicitly for this purpose
+    -----------------------------------------------------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------------------------------------------------
+    Inductive_rule : (params : TTerm) -> (args : Nat) -> (cons_dom : TTerm) -> -- cons_dom is domain of the constructor
+                     (inside : TTerm) -> (TTRel inside cons_dom) ->
+                     (TTRel (Cons inside) (Inductive params args cons_dom))          
