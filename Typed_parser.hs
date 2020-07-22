@@ -71,7 +71,7 @@ with_skip :: Parser a -> Parser a
 with_skip p = do
   skipMany space
   p
-{-
+
 ----------------------------------------------------------------------------------
 ---------- parsing of types ------------------------------------------------------
 ----------------------------------------------------------------------------------
@@ -79,11 +79,9 @@ with_skip p = do
 -- the parse_type function gives a parser of the type based on the context
 parse_type :: [(String, TType)] -> (Parser TType)
 parse_type context = do
-  -- skipMany space 
-  x <- (try (parse_constant context) 
-    <|> try (parse_identifier context)
-    <|> try (parse_function context))
-  -- skipMany space
+  x <- (try (parse_constant context)
+    <|> try (parse_atomic context)
+    <|> try (parse_identifier context))
   return x
 
 parse_constant :: [(String, TType)] -> (Parser TType)
@@ -94,32 +92,48 @@ parse_constant context = do
       z = (x : y)
     case z of
       "Singleton" -> return Singleton
-      "Empty" -> return Empty
+      -- "Empty" -> return Typed_lambda.Empty
       _ -> case (find (\el -> (fst el) == z) context) of
           (Just t) -> return (snd t)
-          Nothing -> unexpected ("Not found type " ++ z ++ " in context") 
+          Nothing -> unexpected ("Type " ++ z ++ " is not defined") 
 
 parse_identifier :: [(String, TType)] -> (Parser TType)
 parse_identifier context = do
   char '('
   x <- (parse_type context)
+  skipMany1 space
   op <- anyChar
+  skipMany1 space
   y <- (parse_type context)
+  skipMany space
   char ')'
   case op of
     '+' -> return (Sum x y)
     '*' -> return (Product x y)
+    '>' -> return (Function x y)
     _ -> unexpected ("Unexpected operator \"" ++ [op] ++ "\"")
 
-parse_function :: [(String, TType)] -> (Parser TType)
-parse_function context = do
-  char '('
-  x <- (parse_type context)
-  string "->"
-  y <- (parse_type context)
-  char ')'
-  return (Function x y)
--}
+parse_atomic :: [(String, TType)] -> (Parser TType)
+parse_atomic context = do
+  char '$'
+  x <- letter
+  y <- many (letter <|> digit <|> allowed)
+  let
+    z = (x : y)
+  case (find (\el -> (fst el) == z) context) of
+    (Just t) -> unexpected ("Type " ++ z ++ " is already defined")
+    Nothing -> return (Atomic z)
+    
+
+-- parse_function :: [(String, TType)] -> (Parser TType)
+-- parse_function context = do
+--   char '('
+--   x <- (parse_type context)
+--   string "->"
+--   y <- (parse_type context)
+--   char ')'
+--   return (Function x y)
+
 ----------------------------------------------------------------------------------
 ---------- parsing of terms ------------------------------------------------------
 ----------------------------------------------------------------------------------
@@ -140,21 +154,21 @@ data Parse_term_error =
 
 type Parser = Parsec String ()
 
-parse_term :: [(String, Term)] -> [String] -> Parser Term 
-parse_term context bound_name = do
+parse_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term 
+parse_term types context bound_name = do
   -- skipMany space
-  x <- (try (parse_constant_term context bound_name)
-    <|> try (parse_app_term context bound_name) 
-    <|> try (parse_sum_term context bound_name)
-    <|> try (parse_pair_term context bound_name)
-    <|> try (parse_lambda_term context bound_name)
+  x <- (try (parse_constant_term types context bound_name)
+    <|> try (parse_app_term types context bound_name) 
+    <|> try (parse_sum_term types context bound_name)
+    <|> try (parse_pair_term types context bound_name)
+    <|> try (parse_lambda_term types context bound_name)
     -- <?> "Parse error")
     )
   -- skipMany space 
   return x 
 
-parse_constant_term :: [(String, Term)] -> [String] -> Parser Term
-parse_constant_term context bound_name = do
+parse_constant_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term
+parse_constant_term types context bound_name = do
   x <- letter
   y <- many (letter <|> digit)        
   case (find (\el -> ((fst el) == ([x] ++ y))) context) of
@@ -165,60 +179,69 @@ parse_constant_term context bound_name = do
       (Just bound_index) -> return (Bound bound_index)
       Nothing -> fail ("Not found definition of " ++ ([x] ++ y))
       
-parse_pair_term :: [(String, Term)] -> [String] -> Parser Term
-parse_pair_term context bound_name = do
+parse_pair_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term
+parse_pair_term types context bound_name = do
   char '('
   skipMany space
-  x <- parse_term context bound_name
+  x <- parse_term types context bound_name
   skipMany space
   char ','
   skipMany space
-  y <- parse_term context bound_name
+  y <- parse_term types context bound_name
   skipMany space
   char ')'
   return (Pair x y)
 
-parse_sum_term :: [(String, Term)] -> [String] -> Parser Term
-parse_sum_term context bound_name = do
+parse_sum_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term
+parse_sum_term types context bound_name = do
     char '('
     x <- many1 letter
     skipMany1 space
     case x of
       "inr" -> do
-        y <- parse_term context bound_name
+        y <- parse_term types context bound_name
         skipMany space
+        char '+'
+        skipMany space
+        t <- parse_type types
         char ')'
-        return (Inr y)
+        return (Inr y t)
       "inl" -> do
-        y <- parse_term context bound_name
+        y <- parse_term types context bound_name
+        skipMany space
+        char '+'
+        skipMany space
+        t <- parse_type types
         skipMany space
         char ')'
-        return (Inl y)
+        return (Inl y t)
       _ -> unexpected ("constructor " ++ x)
 
-parse_lambda_term :: [(String, Term)] -> [String] -> Parser Term
-parse_lambda_term context bound_name = do
+parse_lambda_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term
+parse_lambda_term types context bound_name = do
   char '/'
   x <- many1 letter
   y <- many (letter <|> digit <|> allowed)
   skipMany space
+  char ':'
+  t <- parse_type types
+  skipMany space
   char '.'
   skipMany space
-  inside <- parse_term context ((x ++ y) : bound_name)
+  inside <- parse_term types context ((x ++ y) : bound_name)
   case (find (== (x ++ y)) (((fmap fst) context) ++ bound_name)) of
     (Just found) -> fail ("repeated use of name " ++ (x ++ y))
-    Nothing -> return (Lambda inside)
+    Nothing -> return (Lambda t inside)
 
-parse_app_term :: [(String, Term)] -> [String] -> Parser Term
-parse_app_term context bound_name = do
+parse_app_term :: [(String, TType)] -> [(String, Term)] -> [String] -> Parser Term
+parse_app_term types context bound_name = do
   char '('
   skipMany space
-  x <- parse_term context bound_name
+  x <- parse_term types context bound_name
   skipMany1 space
-  y <- parse_term context bound_name
+  y <- parse_term types context bound_name
   skipMany space
   char ')'
   return (App x y)
 
-starting_context :: [(String, Term)]
-starting_context = [("unit", Unit), ("void", Void)]
+starting_context = [("unit", Unit)]  

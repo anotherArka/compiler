@@ -42,11 +42,22 @@ mutual
   -- ty is an argument. Because we are using De-Bruijn index it is enough to
   -- specify the number of arguments.
   
-  data TTRel : TTerm -> TTerm -> Type where
-    Unit_rule : TTRel Unit Singleton
-    Void_rule : (ty : TTerm) -> (TTRel (Myth ty) (Function Empty ty))
-    Product_rule : (x : TTerm) -> (tx : TTerm) -> (TTRel x tx) ->
-                   (y : TTerm) -> (ty : TTerm) -> (TTRel y ty) ->
+  -- specify constructors as functions into the inductive type. Take care of
+  -- the evaluation as declaring them as normal forms
+  
+  -- add extension and contraction rules for contexts
+  data TTRel : (List TTerm) -> TTerm -> TTerm -> Type where
+    Unit_rule : (ctx : List TTerm) -> TTRel ctx Unit Singleton  
+    Void_rule : (ctx : List TTerm) -> (ty : TTerm) -> (TTRel ctx (Myth ty) (Function Empty ty))
+    Universe_hierarchy_rule : (ctx : List TTerm) -> (n : Nat) -> (TTRel ctx (Universe n) (Universe (S n)))
+    Universe_inclusion_rule : (ctx : List TTerm) -> (n : Nat) -> (t : TTerm) ->
+                              (TTRel ctx t (Universe n)) ->  (TTRel ctx t (Universe (S n)))
+    Function_type_rule : (ctx : List TTerm) -> (n : Nat) -> (dom : TTerm) -> (cod : TTerm) ->
+                         (TTRel ctx dom (Universe n)) -> (TTRel (dom :: ctx) cod (Universe n)) ->
+                         (TTRel ctx (Function dom cod) (Universe n))                            
+    {-
+    Product_rule : (x : TTerm) -> (tx : TTerm) -> (ctx : List TTerm) -> (TTRel ctx x tx) ->
+                   (y : TTerm) -> (ty : TTerm) -> (ctx : List TTerm) -> (TTRel y ty) ->
                    (TTRel (TPair x y) (Product tx ty))
     Function_rule : (dom : TTerm) -> (cod : TTerm) ->
                     (f : TTerm) -> (x : TTerm) ->
@@ -66,4 +77,5 @@ mutual
     -----------------------------------------------------------------------------------------------------------------------------
     Inductive_rule : (params : TTerm) -> (args : Nat) -> (cons_dom : TTerm) -> -- cons_dom is domain of the constructor
                      (inside : TTerm) -> (TTRel inside cons_dom) ->
-                     (TTRel (Cons inside) (Inductive params args cons_dom))          
+                     (TTRel (Cons inside) (Inductive params args cons_dom))  
+    -}                         
