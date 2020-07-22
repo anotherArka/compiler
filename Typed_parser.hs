@@ -245,3 +245,5 @@ parse_app_term types context bound_name = do
   return (App x y)
 
 starting_context = [("unit", Unit)]  
+
+basic_term_parser = parse ((parse_term [] starting_context []) <* eof) "error:"
