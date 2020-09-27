@@ -1,5 +1,9 @@
+module DFA_to_Regex
+
 import Regular_expressions
 import DFA
+
+%access public export
 
 map_list : (a -> b) -> (List a) -> (List b)
 map_list f [] = []
