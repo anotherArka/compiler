@@ -11,5 +11,5 @@ Write whatever small documentation is needed. And also an REPL.
 ### Contradiction.hs
 Contains a derivation of type Void in Haskell
 
-###DFA_to_Regex.idr
+### DFA_to_Regex.idr
 Contains code to convert DFA to Regex
