@@ -47,7 +47,9 @@ cook_term ctxt bound_ctxt (Raw_lambda bound_var inside) =
   else case (find (\entry -> ((fst entry) == bound_var)) ctxt ) of
     Just entry -> Error (bound_var ++
       " is already defined and can not be used as a bound variable")
-    Nothing -> cook_term ctxt (bound_var : bound_ctxt) inside
+    Nothing -> do
+      val <- cook_term ctxt (bound_var : bound_ctxt) inside
+      return (Lambda val)
 
 add_to_context :: [(String, Term)] -> String -> Raw_term -> With_error [(String, Term)]
 add_to_context ctxt name raw_term =
@@ -93,6 +95,8 @@ exp_to_pair :: Exp -> (String, Raw_term)
 exp_to_pair (Let name raw_term) = (name, raw_term)     
       
 file_parser :: String -> (With_error [(String, Term)])
-file_parser code = parse_multiple_lines (fmap (exp_to_pair . parse_lambda) (separate_by code ";" [])) []      
+file_parser code = parse_multiple_lines
+  (fmap (exp_to_pair . parse_lambda) (filter (\l -> ((length l) > 0))
+  (separate_by code ";" []))) []      
       
       

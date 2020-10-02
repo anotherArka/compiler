@@ -6,6 +6,7 @@ data Term =
     App Term Term |
     Lambda Term
   deriving Eq
+
   
 instance Show Term where
   show x = show_helper 0 x
