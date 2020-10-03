@@ -1,5 +1,7 @@
 module Lambda_system where
 
+import Junkyard
+
 data Term =
     Free String |
     Bound Int   | -- we will use De-Bruijn indexing
@@ -48,3 +50,10 @@ evaluate (Bound n)       = Bound n
 evaluate (Lambda inside) = Lambda (evaluate inside)
 evaluate (App (Lambda inside) args) = evaluate (substitute_bound 0 args inside)
 evaluate (App func args) = (App (evaluate func) (evaluate args))
+
+evaluate_times :: Int -> Term -> (With_error Term)
+evaluate_times n term =
+  if (n < 0) then (Error "Can not evaluate negative times")
+  else if (n == 0) then (Correct term)
+  else (evaluate_times (n - 1) (evaluate term))
+

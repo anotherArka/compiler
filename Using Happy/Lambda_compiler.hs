@@ -1,30 +1,9 @@
 module Lambda_compiler where
 
 import Data.List
+import Junkyard
 import Lambda_happy
-import Lambda_system
--- Note --
--- Now the parser only accepts alphabets and not numbers inside variable names --
-
-data With_error a =
-    Correct a |
-    Error String
-  deriving Show
-  
-instance Functor With_error where  
-    fmap f (Error msg) = Error msg 
-    fmap f (Correct x) = Correct (f x)    
-    
-instance Applicative With_error where  
-    pure = Correct  
-    (Error msg) <*> _ = Error msg  
-    (Correct f) <*> x = fmap f x   
-  
-instance Monad With_error where
-    (Correct val) >>= f = f val
-    (Error   msg) >>= f = Error msg
-    return x = Correct x
-    fail msg = Error msg  
+import Lambda_system  
 
 -- Tries to compute the term from the raw term computed by the parser,
 -- given the context and the list of bound variables
@@ -58,32 +37,16 @@ add_to_context ctxt name raw_term =
     Nothing -> do
       term <- cook_term ctxt [] raw_term
       return ((name, term) : ctxt)
-      
--- separate_by from dont_take taken 
--- Divides the string "from" using characters in "dont_take" and adds that to "taken"
--- sample output
---  separate_by  "abcd" "bc" ["kl","mn"] = ["mn","kla","d"]
--- separate_by  "abcdefg" "bcf" [] = ["a","de","g"]
-separate_by :: String -> String -> [String] -> [String]    
-separate_by [] dont_take taken = reverse taken
-separate_by (x : xs) dont_take [] = 
-    if (elem x dont_take)
-    then 
-        separate_by xs dont_take []
-    else
-        separate_by xs dont_take [[x]]
-separate_by (x : xs) dont_take ([] : ys) = 
-    if (elem x dont_take) 
-    then
-        separate_by xs dont_take ([] :  ys)
-    else
-        separate_by xs dont_take ([x] : ys)
-separate_by (x : xs) dont_take ((y : ys) : yss) = 
-    if (elem x dont_take) 
-    then
-        separate_by xs dont_take ([] : ((y : ys) : yss))
-    else
-        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)
+
+eval_def :: [(String, Term)] -> Int -> String -> With_error [(String, Term)]
+eval_def [] n name       = Error (name ++ " is undefined")
+eval_def (c : cs) n name = if ((fst c) == name)
+  then do
+    val <- (evaluate_times n (snd c))
+    return ((name, val) : cs) 
+  else do
+    ds <- eval_def cs n name
+    return (c : ds)
         
 parse_multiple_lines :: [(String, Raw_term)] -> [(String, Term)] -> (With_error [(String, Term)])
 parse_multiple_lines [] starting_ctxt = return starting_ctxt
@@ -98,5 +61,27 @@ file_parser :: String -> (With_error [(String, Term)])
 file_parser code = parse_multiple_lines
   (fmap (exp_to_pair . parse_lambda) (filter (\l -> ((length l) > 0))
   (separate_by code ";" []))) []      
-      
-      
+
+execute_command :: Exp -> [(String, Term)] -> (String, [(String, Term)])
+execute_command (Let name raw_term) ctxt = case (add_to_context ctxt name raw_term) of
+  (Correct new_ctxt) -> ("" , new_ctxt)
+  (Error   msg     ) -> (msg, ctxt)
+execute_command (Print raw_term) ctxt    = case (cook_term ctxt [] raw_term) of
+  (Correct term) -> ((show term), ctxt)
+  (Error   msg ) -> (msg        , ctxt)
+execute_command (Eval_def n var) ctxt    = ("yet to define", ctxt)
+execute_command (Eval n raw_term) ctxt   = case (cook_term ctxt [] raw_term) of
+  (Correct term) -> (show (evaluate term), ctxt)
+  Error msg      -> (msg                 , ctxt)       
+        
+repl :: [(String, Term)] -> IO()          
+repl ctxt = do
+    foo <- putStrLn "little lamb>"
+    input <- getLine  
+    if (input == ":q") then return()
+    else let
+           exp = parse_lambda input
+           new = execute_command exp ctxt
+         in
+         (putStrLn (fst new)) >> 
+         repl (snd new)

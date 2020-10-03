@@ -8,27 +8,38 @@ import Data.Char
 %error { parseError }
 
 %token
-  let    { TokenLet }
-  var    { TokenVar $$ }
-  '/'    { TokenLambda }
-  '.'    { TokenDot }
-  '='    { TokenEq }
-  '('    { TokenOB }
-  ')'    { TokenCB }
+  let      { TokenLet     }
+  eval     { TokenEval    }
+  eval_def { TokenEvalDef }
+  print    { TokenPrint   }
+  var      { TokenVar $$  }
+  num      { TokenNum $$  }
+  '/'      { TokenLambda  }
+  '.'      { TokenDot     }
+  '='      { TokenEq      }
+  '('      { TokenOB      }
+  ')'      { TokenCB      }
 
 %%
 
-Exp  : let var '=' Term  { Let $2 $4 }
-Term : '/' var '.' Term  { Raw_lambda $2 $4 }
-     | '(' Term Term ')' { Raw_app $2 $3 }
-     | var               { Var $1 }
+Exp  : let var '=' Term   { Let $2 $4        }
+     | eval num Term      { Eval $2 $3       }
+     | eval_def num var   { Eval_def $2 $3   }
+     | print Term         { Print $2         }
+Term : '/' var '.' Term   { Raw_lambda $2 $4 }
+     | '(' Term Term ')'  { Raw_app $2 $3    }
+     | var                { Var $1           }
 
 {
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
-data Exp = Let String Raw_term
+data Exp =
+    Let String Raw_term  |
+    Eval Int Raw_term    |
+    Eval_def Int String  |
+    Print Raw_term
   deriving Show
   
 data Raw_term = Var String
@@ -37,12 +48,16 @@ data Raw_term = Var String
   deriving Show
 
 data Token =
-    TokenLet |
-    TokenEq |
+    TokenLet        |
+    TokenEq         |
+    TokenEval       |
+    TokenEvalDef    |
+    TokenPrint      |
     TokenVar String |
-    TokenOB |
-    TokenCB |
-    TokenLambda |
+    TokenNum Int    |
+    TokenOB         |
+    TokenCB         |
+    TokenLambda     |
     TokenDot
   deriving Show
   
@@ -56,10 +71,18 @@ lexer ('.':cs)       = TokenDot    : (lexer cs)
 lexer (c : cs)
   | isSpace c = lexer cs
   | isAlpha c = lexVar (c : cs)
+  | isDigit c = lexNum (c : cs)
 
-lexVar cs = case span isAlpha cs of
-  ("let", rest) -> TokenLet       : (lexer rest)
-  (var  , rest) -> (TokenVar var) : (lexer rest)
+lexVar cs = case span isAlphaNum cs of
+  ("let"     , rest) -> TokenLet     : (lexer rest)
+  ("eval"    , rest) -> TokenEval    : (lexer rest)
+  ("evalDef" , rest) -> TokenEvalDef : (lexer rest)
+  ("eval"    , rest) -> TokenEval    : (lexer rest)
+  ("print"   , rest) -> TokenPrint   : (lexer rest) 
+  (var  , rest) -> (TokenVar var)    : (lexer rest)
+  
+lexNum cs = case span isDigit cs of
+  (val, rest) -> (TokenNum (read val)) : (lexer rest)  
 
 parse_lambda = calc . lexer    
   
