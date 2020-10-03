@@ -1,6 +1,7 @@
 module Lambda_system where
 
 import Junkyard
+import MonadE
 
 data Term =
     Free String |
@@ -51,9 +52,9 @@ evaluate (Lambda inside) = Lambda (evaluate inside)
 evaluate (App (Lambda inside) args) = (substitute_bound 0 args inside)
 evaluate (App func args) = (App (evaluate func) (evaluate args))
 
-evaluate_times :: Int -> Term -> (With_error Term)
+evaluate_times :: Int -> Term -> (E Term)
 evaluate_times n term =
-  if (n < 0) then (Error "Can not evaluate negative times")
-  else if (n == 0) then (Correct term)
+  if (n < 0) then (Failed "Can not evaluate negative times")
+  else if (n == 0) then (Ok term)
   else (evaluate_times (n - 1) (evaluate term))
 

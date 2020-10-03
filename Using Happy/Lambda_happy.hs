@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -w #-}
 module Lambda_happy where
 import Data.Char
+import MonadE
 import qualified Data.Array as Happy_Data_Array
 import qualified Data.Bits as Bits
 import Control.Applicative(Applicative(..))
@@ -15,18 +16,18 @@ data HappyAbsSyn t4 t5
 	| HappyAbsSyn5 t5
 
 happyExpList :: Happy_Data_Array.Array Int Int
-happyExpList = Happy_Data_Array.listArray (0,36) ([480,64,2048,0,16384,32768,32768,18,0,0,4,296,16,1184,1024,4736,0,0,37888,16384,20480,2,8,0,0,0,0
+happyExpList = Happy_Data_Array.listArray (0,37) ([480,128,8192,0,0,4,16,1184,0,0,2048,40960,32772,0,74,128,1184,0,0,10240,1,32769,18,128,0,0,0,0
 	])
 
 {-# NOINLINE happyExpListPerState #-}
 happyExpListPerState st =
     token_strs_expected
-  where token_strs = ["error","%dummy","%start_calc","Exp","Term","let","eval","eval_def","print","var","num","'/'","'.'","'='","'('","')'","%eof"]
-        bit_start = st * 17
-        bit_end = (st + 1) * 17
+  where token_strs = ["error","%dummy","%start_calc","Exp","Term","let","eval","eval_def","print","var","num","'/'","'.'","'='","'('","')'","unknown","%eof"]
+        bit_start = st * 18
+        bit_end = (st + 1) * 18
         read_bit = readArrayBit happyExpList
         bits = map read_bit [bit_start..bit_end - 1]
-        bits_indexed = zip bits [0..16]
+        bits_indexed = zip bits [0..17]
         token_strs_expected = concatMap f bits_indexed
         f (False, _) = []
         f (True, nr) = [token_strs !! nr]
@@ -44,7 +45,7 @@ action_1 _ = happyFail (happyExpListPerState 1)
 action_2 (10) = happyShift action_13
 action_2 _ = happyFail (happyExpListPerState 2)
 
-action_3 (17) = happyAccept
+action_3 (18) = happyAccept
 action_3 _ = happyFail (happyExpListPerState 3)
 
 action_4 (11) = happyShift action_12
@@ -182,7 +183,7 @@ happyReduction_7 (HappyTerminal (TokenVar happy_var_1))
 happyReduction_7 _  = notHappyAtAll 
 
 happyNewToken action sts stk [] =
-	action 17 17 notHappyAtAll (HappyState action) sts stk []
+	action 18 18 notHappyAtAll (HappyState action) sts stk []
 
 happyNewToken action sts stk (tk:tks) =
 	let cont i = action i i tk (HappyState action) sts stk tks in
@@ -198,43 +199,30 @@ happyNewToken action sts stk (tk:tks) =
 	TokenEq -> cont 14;
 	TokenOB -> cont 15;
 	TokenCB -> cont 16;
+	TokenUnknown -> cont 17;
 	_ -> happyError' ((tk:tks), [])
 	}
 
-happyError_ explist 17 tk tks = happyError' (tks, explist)
+happyError_ explist 18 tk tks = happyError' (tks, explist)
 happyError_ explist _ tk tks = happyError' ((tk:tks), explist)
 
-newtype HappyIdentity a = HappyIdentity a
-happyIdentity = HappyIdentity
-happyRunIdentity (HappyIdentity a) = a
-
-instance Functor HappyIdentity where
-    fmap f (HappyIdentity a) = HappyIdentity (f a)
-
-instance Applicative HappyIdentity where
-    pure  = HappyIdentity
-    (<*>) = ap
-instance Monad HappyIdentity where
-    return = pure
-    (HappyIdentity p) >>= q = q p
-
-happyThen :: () => HappyIdentity a -> (a -> HappyIdentity b) -> HappyIdentity b
-happyThen = (>>=)
-happyReturn :: () => a -> HappyIdentity a
-happyReturn = (return)
-happyThen1 m k tks = (>>=) m (\a -> k a tks)
-happyReturn1 :: () => a -> b -> HappyIdentity a
-happyReturn1 = \a tks -> (return) a
-happyError' :: () => ([(Token)], [String]) -> HappyIdentity a
-happyError' = HappyIdentity . (\(tokens, _) -> parseError tokens)
-calc tks = happyRunIdentity happySomeParser where
+happyThen :: () => E a -> (a -> E b) -> E b
+happyThen = (thenE)
+happyReturn :: () => a -> E a
+happyReturn = (returnE)
+happyThen1 m k tks = (thenE) m (\a -> k a tks)
+happyReturn1 :: () => a -> b -> E a
+happyReturn1 = \a tks -> (returnE) a
+happyError' :: () => ([(Token)], [String]) -> E a
+happyError' = (\(tokens, _) -> parseError tokens)
+calc tks = happySomeParser where
  happySomeParser = happyThen (happyParse action_0 tks) (\x -> case x of {HappyAbsSyn4 z -> happyReturn z; _other -> notHappyAtAll })
 
 happySeq = happyDontSeq
 
 
-parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError :: [Token] -> (E a)
+parseError _ = Failed "Parse error"
 
 data Exp =
     Let String Raw_term  |
@@ -259,20 +247,22 @@ data Token =
     TokenOB         |
     TokenCB         |
     TokenLambda     |
+    TokenUnknown    |
     TokenDot
   deriving Show
   
 lexer :: String -> [Token]
 lexer [] = []
-lexer ('=':cs)       = TokenEq     : (lexer cs)
-lexer ('(':cs)       = TokenOB     : (lexer cs)
-lexer (')':cs)       = TokenCB     : (lexer cs)
-lexer ('/':cs)       = TokenLambda : (lexer cs)
-lexer ('.':cs)       = TokenDot    : (lexer cs)
+lexer ('=':cs)       = TokenEq      : (lexer cs)
+lexer ('(':cs)       = TokenOB      : (lexer cs)
+lexer (')':cs)       = TokenCB      : (lexer cs)
+lexer ('/':cs)       = TokenLambda  : (lexer cs)
+lexer ('.':cs)       = TokenDot     : (lexer cs)
 lexer (c : cs)
   | isSpace c = lexer cs
   | isAlpha c = lexVar (c : cs)
   | isDigit c = lexNum (c : cs)
+lexer (c : cs)       = TokenUnknown : (lexer cs)   
 
 lexVar cs = case span isAlphaNum cs of
   ("let"     , rest) -> TokenLet     : (lexer rest)

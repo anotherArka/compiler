@@ -1,11 +1,13 @@
 {
 module Lambda_happy where
 import Data.Char
+import MonadE
 }
 
 %name calc
 %tokentype { Token }
 %error { parseError }
+%monad { E } { thenE } { returnE }
 
 %token
   let      { TokenLet     }
@@ -19,6 +21,7 @@ import Data.Char
   '='      { TokenEq      }
   '('      { TokenOB      }
   ')'      { TokenCB      }
+  unknown  { TokenUnknown }
 
 %%
 
@@ -32,8 +35,8 @@ Term : '/' var '.' Term   { Raw_lambda $2 $4 }
 
 {
 
-parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError :: [Token] -> (E a)
+parseError _ = Failed "Parse error"
 
 data Exp =
     Let String Raw_term  |
@@ -58,20 +61,22 @@ data Token =
     TokenOB         |
     TokenCB         |
     TokenLambda     |
+    TokenUnknown    |
     TokenDot
   deriving Show
   
 lexer :: String -> [Token]
 lexer [] = []
-lexer ('=':cs)       = TokenEq     : (lexer cs)
-lexer ('(':cs)       = TokenOB     : (lexer cs)
-lexer (')':cs)       = TokenCB     : (lexer cs)
-lexer ('/':cs)       = TokenLambda : (lexer cs)
-lexer ('.':cs)       = TokenDot    : (lexer cs)
+lexer ('=':cs)       = TokenEq      : (lexer cs)
+lexer ('(':cs)       = TokenOB      : (lexer cs)
+lexer (')':cs)       = TokenCB      : (lexer cs)
+lexer ('/':cs)       = TokenLambda  : (lexer cs)
+lexer ('.':cs)       = TokenDot     : (lexer cs)
 lexer (c : cs)
   | isSpace c = lexer cs
   | isAlpha c = lexVar (c : cs)
   | isDigit c = lexNum (c : cs)
+lexer (c : cs)       = TokenUnknown : (lexer cs)   
 
 lexVar cs = case span isAlphaNum cs of
   ("let"     , rest) -> TokenLet     : (lexer rest)
