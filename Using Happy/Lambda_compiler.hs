@@ -38,15 +38,15 @@ add_to_context ctxt name raw_term =
       term <- cook_term ctxt [] raw_term
       return ((name, term) : ctxt)
 
-eval_def :: [(String, Term)] -> Int -> String -> With_error [(String, Term)]
+eval_def :: [(String, Term)] -> Int -> String -> With_error ([(String, Term)], Term)
 eval_def [] n name       = Error (name ++ " is undefined")
 eval_def (c : cs) n name = if ((fst c) == name)
   then do
     val <- (evaluate_times n (snd c))
-    return ((name, val) : cs) 
+    return (((name, val) : cs), val) 
   else do
     ds <- eval_def cs n name
-    return (c : ds)
+    return ((c : (fst ds)), (snd ds))
         
 parse_multiple_lines :: [(String, Raw_term)] -> [(String, Term)] -> (With_error [(String, Term)])
 parse_multiple_lines [] starting_ctxt = return starting_ctxt
@@ -69,14 +69,16 @@ execute_command (Let name raw_term) ctxt = case (add_to_context ctxt name raw_te
 execute_command (Print raw_term) ctxt    = case (cook_term ctxt [] raw_term) of
   (Correct term) -> ((show term), ctxt)
   (Error   msg ) -> (msg        , ctxt)
-execute_command (Eval_def n var) ctxt    = ("yet to define", ctxt)
+execute_command (Eval_def n var) ctxt    = case (eval_def ctxt n var) of
+  (Correct result) -> ((show (snd result)), (fst result))
+  (Error   msg   ) -> (msg                , ctxt)
 execute_command (Eval n raw_term) ctxt   = case (cook_term ctxt [] raw_term) of
   (Correct term) -> (show (evaluate term), ctxt)
   Error msg      -> (msg                 , ctxt)       
         
 repl :: [(String, Term)] -> IO()          
 repl ctxt = do
-    foo <- putStrLn "little lamb>"
+    putStrLn "---------------------"
     input <- getLine  
     if (input == ":q") then return()
     else let

@@ -287,7 +287,7 @@ lexNum cs = case span isDigit cs of
 
 parse_lambda = calc . lexer    
   
-main = getContents >>= print . calc . lexer
+--main = getContents >>= print . calc . lexer
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- $Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp $
 

@@ -48,7 +48,7 @@ evaluate :: Term -> Term
 evaluate (Free u)        = (Free u)
 evaluate (Bound n)       = Bound n
 evaluate (Lambda inside) = Lambda (evaluate inside)
-evaluate (App (Lambda inside) args) = evaluate (substitute_bound 0 args inside)
+evaluate (App (Lambda inside) args) = (substitute_bound 0 args inside)
 evaluate (App func args) = (App (evaluate func) (evaluate args))
 
 evaluate_times :: Int -> Term -> (With_error Term)
