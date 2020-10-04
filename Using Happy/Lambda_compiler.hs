@@ -49,17 +49,7 @@ eval_def (c : cs) n name = if ((fst c) == name)
   else do
     ds <- eval_def cs n name
     return ((c : (fst ds)), (snd ds))
-        
-parse_multiple_lines :: [(String, Raw_term)] -> [(String, Term)] -> (E [(String, Term)])
-parse_multiple_lines [] starting_ctxt = return starting_ctxt
-parse_multiple_lines (l : ls) starting_ctxt = do
-  new_ctxt <- (add_to_context starting_ctxt (fst l) (snd l))
-  (parse_multiple_lines ls new_ctxt)
-
-{-  
-exp_to_pair :: Exp -> (String, Raw_term)
-exp_to_pair (Let name raw_term) = (name, raw_term)     
-      
+{-      
 file_parser :: String -> (With_error [(String, Term)])
 file_parser code = parse_multiple_lines
   (fmap (exp_to_pair . parse_lambda) (filter (\l -> ((length l) > 0))
@@ -78,22 +68,53 @@ execute_command (Ok (Eval_def n var)) ctxt    = case (eval_def ctxt n var) of
   (Failed msg) -> (msg                , ctxt)
 execute_command (Ok (Eval n raw_term)) ctxt   = case (cook_term ctxt [] raw_term) of
   (Ok term)    -> (show (evaluate term), ctxt)
-  (Failed msg) -> (msg                 , ctxt)       
-    
-delete_preceding_spaces :: String -> String
-delete_preceding_spaces [] = []
-delete_preceding_spaces (c : cs) =
-  if (isSpace c) then (delete_preceding_spaces cs)
-  else (c : cs)    
+  (Failed msg) -> (msg                 , ctxt)
+-- execute_command (Ok (Load_file file_name)) ctxt = do
+  --contents <- readFile              
         
-repl :: [(String, Term)] -> IO()          
-repl ctxt = do
+repl :: (String, [(String, Term)]) -> IO()          
+repl (msg, ctxt) = do
+    putStrLn msg
     putStrLn "---------------------"
     input <- getLine
     if ((delete_preceding_spaces input) == ":q") then return()
+    else if ((delete_preceding_spaces input) == ":l") then do
+         putStrLn "File to load?"
+         file_name <- getLine
+         file_contents <- readFile file_name
+         repl (parse_multiple_lines ctxt file_name 1 
+           ("Loading file " ++ file_name) 
+           (fmap parse_lambda (filter (\el -> ((length el) > 0))
+           (separate_by file_contents ";" []))) ctxt)           
     else let
            exp = parse_lambda input
            new = execute_command exp ctxt
-         in  
-         (putStrLn (fst new)) >> 
-         repl (snd new)
+         in   
+         repl new
+
+error_msg :: String -> Int -> String -> String
+error_msg file_name line_number msg =
+  "Error at line " ++ (show line_number) ++ " of " ++ file_name ++ " : " ++ msg  
+  
+-- parse_multiple_lines original-context file-name line-number print_msg lines context          
+parse_multiple_lines :: [(String, Term)] -> String -> Int -> String -> [(E Exp)] -> [(String, Term)] -> (String, [(String, Term)])
+parse_multiple_lines original_ctxt file_name line_number print_msg [] ctxt = (print_msg, ctxt)
+parse_multiple_lines original_ctxt file_name line_number print_msg ((Failed msg) : ls) ctxt =
+  (error_msg file_name line_number msg, original_ctxt)
+parse_multiple_lines original_ctxt file_name line_number print_msg ((Ok (Let name raw_term)) : ls) ctxt =
+  case (add_to_context ctxt name raw_term) of
+    (Ok new_ctxt) -> (parse_multiple_lines original_ctxt file_name (line_number + 1) print_msg ls new_ctxt)
+    (Failed  msg) -> (error_msg file_name line_number msg, ctxt)
+parse_multiple_lines original_ctxt file_name line_number print_msg ((Ok (Print raw_term)) : ls) ctxt =
+  case (cook_term ctxt [] raw_term) of
+    (Ok term)    ->
+      (parse_multiple_lines original_ctxt file_name (line_number + 1) (print_msg ++ "\n" ++ (show line_number) ++ " :>" ++ (show term)) ls ctxt)
+    (Failed msg) -> (error_msg file_name line_number msg, original_ctxt)
+parse_multiple_lines original_ctxt file_name line_number print_msg ((Ok (Eval_def n var)) : ls) ctxt = case (eval_def ctxt n var) of
+  (Ok result)  ->
+    (parse_multiple_lines original_ctxt file_name (line_number + 1) (print_msg ++ "\n" ++ (show line_number) ++ " :>" ++ (show result)) ls ctxt)
+  (Failed msg) -> (error_msg file_name line_number msg, original_ctxt)
+parse_multiple_lines original_ctxt file_name line_number print_msg ((Ok (Eval n raw_term)) : ls) ctxt = case (cook_term ctxt [] raw_term) of
+  (Ok term)    ->
+    (parse_multiple_lines original_ctxt file_name (line_number + 1) (print_msg ++ "\n" ++ (show line_number) ++ " :>" ++ (show term)) ls ctxt)
+  (Failed msg) -> (error_msg file_name line_number msg, original_ctxt)

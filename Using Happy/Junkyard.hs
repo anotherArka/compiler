@@ -1,5 +1,7 @@
 module Junkyard where
 
+import Data.Char
+
 data With_error a =
     Correct a |
     Error String
@@ -44,4 +46,10 @@ separate_by (x : xs) dont_take ((y : ys) : yss) =
     then
         separate_by xs dont_take ([] : ((y : ys) : yss))
     else
-        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)    
+        separate_by xs dont_take ( ((y : ys) ++ [x]) : yss)
+        
+delete_preceding_spaces :: String -> String
+delete_preceding_spaces [] = []
+delete_preceding_spaces (c : cs) =
+  if (isSpace c) then (delete_preceding_spaces cs)
+  else (c : cs)            

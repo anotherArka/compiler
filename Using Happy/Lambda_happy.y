@@ -14,6 +14,7 @@ import MonadE
   eval     { TokenEval    }
   eval_def { TokenEvalDef }
   print    { TokenPrint   }
+  load     { TokenLoad    }
   var      { TokenVar $$  }
   num      { TokenNum $$  }
   '/'      { TokenLambda  }
@@ -29,6 +30,7 @@ Exp  : let var '=' Term   { Let $2 $4        }
      | eval num Term      { Eval $2 $3       }
      | eval_def num var   { Eval_def $2 $3   }
      | print Term         { Print $2         }
+     | load var           { Load_file $2     }
 Term : '/' var '.' Term   { Raw_lambda $2 $4 }
      | '(' Term Term ')'  { Raw_app $2 $3    }
      | var                { Var $1           }
@@ -42,7 +44,8 @@ data Exp =
     Let String Raw_term  |
     Eval Int Raw_term    |
     Eval_def Int String  |
-    Print Raw_term
+    Print Raw_term       |
+    Load_file String
   deriving Show
   
 data Raw_term = Var String
@@ -56,6 +59,7 @@ data Token =
     TokenEval       |
     TokenEvalDef    |
     TokenPrint      |
+    TokenLoad       |
     TokenVar String |
     TokenNum Int    |
     TokenOB         |
@@ -83,7 +87,8 @@ lexVar cs = case span isAlphaNum cs of
   ("eval"    , rest) -> TokenEval    : (lexer rest)
   ("evalDef" , rest) -> TokenEvalDef : (lexer rest)
   ("eval"    , rest) -> TokenEval    : (lexer rest)
-  ("print"   , rest) -> TokenPrint   : (lexer rest) 
+  ("print"   , rest) -> TokenPrint   : (lexer rest)
+  ("load"    , rest) -> TokenLoad    : (lexer rest)
   (var  , rest) -> (TokenVar var)    : (lexer rest)
   
 lexNum cs = case span isDigit cs of
