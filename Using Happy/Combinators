@@ -1,3 +1,5 @@
 let id    = /x.x    ;
 let KComb = /x./y.x ;
-let SComb = /x./y./z.((x z) (y z)) ; 
+print id;
+let SComb = /x./y./z.((x z) (y z)) ;
+eval 2 (KComb id); 

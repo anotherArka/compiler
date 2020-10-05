@@ -16,9 +16,9 @@ instance Show Term where
 
 show_helper :: Int -> Term -> String
 show_helper level (Free x) = x
-show_helper level (Bound n) = "#x" ++ (show (level - n - 1))
+show_helper level (Bound n) = "x" ++ (show (level - n - 1))
 show_helper level (Lambda inside) =
-  "/" ++ "#x" ++ (show level) ++ "." ++ (show_helper (level + 1) inside)
+  "/" ++ "x" ++ (show level) ++ "." ++ (show_helper (level + 1) inside)
 show_helper level (App x y) =
   "(" ++ (show_helper level x) ++ " " ++ (show_helper level y) ++ ")"
   

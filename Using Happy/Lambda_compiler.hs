@@ -68,7 +68,7 @@ execute_command (Ok (Eval_def n var)) ctxt    = case (eval_def ctxt n var) of
   (Ok result)  -> ((show (snd result)), (fst result))
   (Failed msg) -> (msg                , ctxt)
 execute_command (Ok (Eval n raw_term)) ctxt   = case (cook_term ctxt [] raw_term) of
-  (Ok term)    -> (show (evaluate term), ctxt)
+  (Ok term)    -> (show (evaluate_times n term), ctxt)
   (Failed msg) -> (msg                 , ctxt)
 -- execute_command (Ok (Load_file file_name)) ctxt = do
   --contents <- readFile              

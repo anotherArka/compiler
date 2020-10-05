@@ -1,7 +1,11 @@
 module MonadE where
 
 data E a = Ok a | Failed String
-  deriving (Show, Eq)
+  deriving Eq
+
+instance (Show a) => (Show (E a)) where
+  show (Ok x) = show x
+  show (Failed msg) = "Error : " ++ msg
 
 thenE :: E a -> (a -> E b) -> E b
 thenE m k = case m of
