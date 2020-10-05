@@ -1,6 +1,6 @@
 # Lambda Calculus Interpreter
 
-An interpreter for [lambda calculus](https://en.wikipedia.org/wiki/Lambda_calculus#:~:text=Lambda%20calculus%20(also%20written%20as,to%20simulate%20any%20Turing%20machine.)
+An interpreter for lambda calculus
 , implementing
 [De-Bruijn indexing](https://en.wikipedia.org/wiki/De_Bruijn_index).
 It is written in [Haskell](https://www.haskell.org/).
