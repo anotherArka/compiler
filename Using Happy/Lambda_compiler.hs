@@ -2,6 +2,7 @@ module Lambda_compiler where
 
 import Data.List
 import Data.Char
+import Control.Monad.Catch
 import Junkyard
 import Lambda_happy
 import Lambda_system
@@ -72,25 +73,32 @@ execute_command (Ok (Eval n raw_term)) ctxt   = case (cook_term ctxt [] raw_term
 -- execute_command (Ok (Load_file file_name)) ctxt = do
   --contents <- readFile              
         
-repl :: (String, [(String, Term)]) -> IO()          
+repl :: (String, [(String, Term)]) -> IO ()          
 repl (msg, ctxt) = do
-    putStrLn msg
+    putStrLn (">> " ++ msg)
     putStrLn "---------------------"
     input <- getLine
-    if ((delete_preceding_spaces input) == ":q") then return()
-    else if ((delete_preceding_spaces input) == ":l") then do
-         putStrLn "File to load?"
+    if ((delete_preceding_spaces input) == ":q") then (return ())
+    else if ((delete_preceding_spaces input) == ":l") then catch 
+      (  do
+         putStrLn ">> File to load?"
          file_name <- getLine
          file_contents <- readFile file_name
          repl (parse_multiple_lines ctxt file_name 1 
            ("Loading file " ++ file_name) 
-           (fmap parse_lambda (filter (\el -> ((length el) > 0))
-           (separate_by file_contents ";" []))) ctxt)           
+           (fmap parse_lambda           
+           (filter (\el -> (foldl (\acc x -> (acc || (not (isSpace x)))) False el))
+           -- takes the lines where there is at least one non-space char
+           (separate_by file_contents ";" []))) ctxt))
+     (file_error_handler ctxt)         
     else let
            exp = parse_lambda input
            new = execute_command exp ctxt
          in   
          repl new
+
+file_error_handler :: [(String, Term)] -> SomeException -> IO ()
+file_error_handler ctxt msg = repl ((show msg), ctxt)
 
 error_msg :: String -> Int -> String -> String
 error_msg file_name line_number msg =
