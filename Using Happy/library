@@ -1,4 +1,0 @@
-let id = /x.x;
-print id;
-
-
